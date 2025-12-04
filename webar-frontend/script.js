@@ -234,15 +234,7 @@ async function recognizeFaceLocal() {
 
 // ---------------- 顯示浮動使用者名牌 ----------------
 function showUserTag(user) {
-    function showUserTag(user) {
   console.log("[showUserTag] 顯示：", user.name);  // ← 可以幫你確認有沒有被呼叫
-
-  tagName.textContent = user.name || "";
-  tagNickname.textContent = user.nickname ? `@${user.nickname}` : "";
-
-  userTag.style.display = "block";
-}
-
   tagName.textContent = user.name || "";
   tagNickname.textContent = user.nickname ? `@${user.nickname}` : "";
 
