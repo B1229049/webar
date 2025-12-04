@@ -100,7 +100,7 @@ label {
 #userTag {
   position: absolute;
   padding: 6px 10px;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.7);
   border-radius: 10px;
   color: #fff;
   font-size: 14px;
@@ -109,8 +109,8 @@ label {
   pointer-events: none;
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255,255,255,0.25);
+  z-index: 10;   /* ⭐ 很重要：不然可能被 <video> 或 <canvas> 擋掉 */
 }
-
 
 #tagName {
   font-weight: 700;
