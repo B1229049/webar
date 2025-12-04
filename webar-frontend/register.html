@@ -1,83 +1,196 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>註冊使用者與臉部資料</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="style.css" />
+    <title>註冊帳戶</title>
 
-  <!-- face-api.js（臉部特徵） -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* ---- 版面配置 ---- */
+        body {
+            background: #111827;
+            color: white;
+            font-family: "Segoe UI", sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 30px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+            background: #1f2937;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.35);
+        }
+
+        h2 {
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        /* ---- 預覽框 ---- */
+        .preview-box {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: #374151;
+            border-radius: 14px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        #placeholder,
+        #regVideo,
+        #previewCanvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #placeholder {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+
+        #regVideo {
+            display: none;
+        }
+
+        #previewCanvas {
+            display: none;
+        }
+
+        /* ---- 輸入框 ---- */
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            background: #374151;
+            color: white;
+            font-size: 14px;
+        }
+
+        textarea {
+            height: 80px;
+            resize: none;
+        }
+
+        /* ---- 按鈕 ---- */
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .primary-btn {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .secondary-btn {
+            background: #4b5563;
+            color: white;
+        }
+
+        #uploadPhoto {
+            display: none;
+        }
+
+        .uploadLabel {
+            display: block;
+            background: #6b7280;
+            text-align: center;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            margin-bottom: 12px;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        /* ---- Toast ---- */
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 16px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 8px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity .3s;
+        }
+    </style>
 </head>
 
-<!-- 加上 register-page，讓樣式只影響這一頁 -->
-<body class="register-page">
-  <div class="register-wrapper">
-    <div class="register-card">
+<body>
 
-      <!-- 步驟指示器 -->
-      <div class="step-indicator">
-        <div class="step-dot active" id="dot-step1">1</div>
-        <div class="step-line"></div>
-        <div class="step-dot" id="dot-step2">2</div>
-      </div>
+    <div class="container">
 
-      <!-- Step 1：基本資料 -->
-      <div id="step1" class="step-panel">
-        <h2>Step 1｜建立使用者資料</h2>
-        <p class="step-subtitle">先輸入基本資訊，接著再註冊臉部辨識。</p>
+        <h2>建立帳戶</h2>
 
-        <label>姓名（必填）</label>
-        <input type="text" id="name" placeholder="例如：陳小明" />
-
-        <label>暱稱</label>
-        <input type="text" id="nickname" placeholder="例如：Simon" />
-
-        <label>介紹</label>
-        <textarea id="description" rows="3" placeholder="簡單介紹一下自己～"></textarea>
-
-        <label>額外資訊</label>
-        <textarea id="extra" rows="2" placeholder="興趣 / 身分 / 備註…"></textarea>
-
-        <button id="nextBtn" class="btn primary-btn">下一步：註冊臉部 →</button>
-      </div>
-
-      <!-- Step 2：臉部註冊 -->
-      <div id="step2" class="step-panel" style="display:none;">
-        <h2>Step 2｜上傳或拍照註冊臉部</h2>
-        <p class="step-subtitle">請選擇一張清楚的正臉照片，或用鏡頭拍一張。</p>
-
-        <button id="backBtn" class="btn ghost-btn">← 回上一頁</button>
-
-        <div class="section">
-          <h3>方式 A：上傳照片</h3>
-          <input type="file" id="uploadPhoto" accept="image/*" />
-          <small>建議使用單人、正面的清晰照片。</small>
+        <!-- 📸 預覽框：尚未拍照 / 視訊 / 截圖 -->
+        <div class="preview-box">
+            <div id="placeholder">尚未拍照</div>
+            <video id="regVideo" playsinline autoplay></video>
+            <canvas id="previewCanvas"></canvas>
         </div>
 
-        <div class="section">
-          <h3>方式 B：使用鏡頭拍照</h3>
-          <video id="regVideo" autoplay playsinline></video>
-          <button id="takePhotoBtn" class="btn secondary-btn">拍一張照片</button>
+        <!-- 拍照按鈕 -->
+        <button id="takePhotoBtn" class="btn secondary-btn">拍一張照片</button>
+
+        <!-- 上傳照片 -->
+        <label for="uploadPhoto" class="uploadLabel">選擇照片上傳</label>
+        <input type="file" id="uploadPhoto" accept="image/*">
+
+        <!-- 使用者資料欄位 -->
+        <div class="input-group">
+            <input type="text" id="nameInput" placeholder="姓名">
         </div>
 
-        <div class="section">
-          <h3>預覽</h3>
-          <canvas id="previewCanvas"></canvas>
-          <small>上傳或拍照後，會在這裡顯示使用的照片。</small>
+        <div class="input-group">
+            <input type="text" id="nicknameInput" placeholder="暱稱（可選）">
         </div>
 
-        <button id="submitFaceBtn" class="btn primary-btn full-width">
-          完成註冊並啟用臉部辨識
-        </button>
-      </div>
+        <div class="input-group">
+            <textarea id="descriptionInput" placeholder="描述（可選）"></textarea>
+        </div>
+
+        <div class="input-group">
+            <textarea id="extraInfoInput" placeholder="額外資訊（可選）"></textarea>
+        </div>
+
+        <button id="registerBtn" class="btn primary-btn">註冊</button>
+
+        <div id="toast"></div>
     </div>
-  </div>
 
-  <!-- Toast 通知 -->
-  <div id="toast" class="toast"></div>
+    <!-- ⭐ 採用 ES Module -->
+     <script defer src="face-api.min.js"></script>
 
-  <script type="module" src="./register.js"></script>
+    <script type="module" src="register.js"></script>
 </body>
 </html>

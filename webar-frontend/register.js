@@ -1,232 +1,255 @@
-// register.js - 兩階段註冊 + 上傳 / 拍照 + Supabase + 自動跳轉
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/esm/index.js";
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-// ★★★ 改成你的 Supabase 設定 ★★★
+// ★★★ 改成你自己的 Supabase 設定 ★★★
 const SUPABASE_URL = "https://msuhvjhznkodpjfjpaia.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zdWh2amh6bmtvZHBqZmpwYWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MzEwMTMsImV4cCI6MjA4MDQwNzAxM30.32jirKcLxE-sF3ICPD_yitBsO42JorbUgahz_1RAqoY";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// DOM 取得
-const step1 = document.getElementById("step1");
-const step2 = document.getElementById("step2");
-const dotStep1 = document.getElementById("dot-step1");
-const dotStep2 = document.getElementById("dot-step2");
-
-const nextBtn = document.getElementById("nextBtn");
-const backBtn = document.getElementById("backBtn");
-
-const uploadPhoto = document.getElementById("uploadPhoto");
+// DOM
+const placeholder = document.getElementById("placeholder");
 const regVideo = document.getElementById("regVideo");
-const takePhotoBtn = document.getElementById("takePhotoBtn");
 const previewCanvas = document.getElementById("previewCanvas");
-const submitFaceBtn = document.getElementById("submitFaceBtn");
+
+const takePhotoBtn = document.getElementById("takePhotoBtn");
+const uploadPhoto = document.getElementById("uploadPhoto");
+const registerBtn = document.getElementById("registerBtn");
+
+const nameInput = document.getElementById("nameInput");
+const nicknameInput = document.getElementById("nicknameInput");
+const descriptionInput = document.getElementById("descriptionInput");
+const extraInfoInput = document.getElementById("extraInfoInput");
 
 const toastEl = document.getElementById("toast");
 
-// 暫存使用者 ID 與圖片來源
-let createdUserId = null;
-let capturedImage = null;
+// 狀態
+let currentMode = "idle"; // "idle" | "preview" | "captured"
 let cameraStream = null;
+let capturedImage = null; // 會指向 previewCanvas
+let modelsReady = false;
 
-// ---- 小工具：Toast 訊息 ----
+// ---------- Toast 小工具 ----------
 function showToast(msg, duration = 3000) {
   toastEl.textContent = msg;
-  toastEl.classList.add("show");
-  setTimeout(() => {
-    toastEl.classList.remove("show");
+  toastEl.style.opacity = "1";
+  if (toastEl._hideTimer) {
+    clearTimeout(toastEl._hideTimer);
+  }
+  toastEl._hideTimer = setTimeout(() => {
+    toastEl.style.opacity = "0";
   }, duration);
 }
 
-// ---- Step 切換 ----
-function goToStep(step) {
-  if (step === 1) {
-    step1.style.display = "block";
-    step2.style.display = "none";
-    dotStep1.classList.add("active");
-    dotStep2.classList.remove("active");
-  } else {
-    step1.style.display = "none";
-    step2.style.display = "block";
-    dotStep1.classList.remove("active");
-    dotStep2.classList.add("active");
-  }
-}
-
-// ---- Step1：建立使用者資料 ----
-nextBtn.addEventListener("click", async () => {
-  const name = document.getElementById("name").value.trim();
-  const nickname = document.getElementById("nickname").value.trim();
-  const description = document.getElementById("description").value.trim();
-  const extra = document.getElementById("extra").value.trim();
-
-  if (!name) {
-    showToast("姓名是必填欄位喔！");
-    return;
-  }
-
-  nextBtn.disabled = true;
-  nextBtn.textContent = "建立中…";
-
-  const { data, error } = await supabase
-    .from("users")
-    .insert([
-      {
-        name,
-        nickname,
-        description,
-        extra_info: extra,
-      }
-    ])
-    .select()
-    .single();
-
-  nextBtn.disabled = false;
-  nextBtn.textContent = "下一步：註冊臉部 →";
-
-  if (error) {
-    console.error("建立使用者失敗：", error);
-    showToast("建立使用者失敗：" + error.message);
-    return;
-  }
-
-  createdUserId = data.id;
-  console.log("使用者建立成功，ID =", createdUserId);
-  showToast("使用者建立成功！請繼續註冊臉部。");
-
-  // 進到 Step 2
-  goToStep(2);
-  //startCamera();
-});
-
-backBtn.addEventListener("click", () => {
-  goToStep(1);
-});
-
-// ---- 相機處理 ----
+// ---------- 相機 ----------
 async function startCamera() {
+  if (cameraStream) return;
+
   try {
     cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" }
+      video: { facingMode: "user" },
+      audio: false,
     });
     regVideo.srcObject = cameraStream;
   } catch (err) {
-    console.error("無法開啟相機：", err);
-    showToast("無法開啟相機，請檢查權限設定。");
+    console.error("無法開啟相機", err);
+    showToast("無法開啟相機，請檢查權限");
   }
 }
 
-// ---- 方式 A：上傳照片 ----
+function stopCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((t) => t.stop());
+    cameraStream = null;
+    regVideo.srcObject = null;
+  }
+}
+
+// ---------- face-api 模型載入 ----------
+const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
+
+async function loadFaceApiModels() {
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+  ]);
+  modelsReady = true;
+  console.log("face-api 模型載入完成");
+  showToast("臉部模型載入完成，可以開始上傳或拍照");
+}
+
+window.addEventListener("load", () => {
+  if (!window.faceapi) {
+    console.error("faceapi 未載入，請在 register.html 加上 face-api.js script");
+    showToast("face-api 載入失敗，請稍後重試");
+    return;
+  }
+  loadFaceApiModels().catch((e) => {
+    console.error(e);
+    showToast("臉部模型載入失敗");
+  });
+});
+
+// ---------- 拍照按鈕：同一框切換邏輯 ----------
+takePhotoBtn.addEventListener("click", async () => {
+  // 狀態 1：idle → 變成 preview（啟動鏡頭預覽）
+  if (currentMode === "idle") {
+    await startCamera();
+    if (!cameraStream) return;
+
+    placeholder.style.display = "none";
+    previewCanvas.style.display = "none";
+    regVideo.style.display = "block";
+
+    currentMode = "preview";
+    showToast("鏡頭已啟動，再按一次拍照");
+    return;
+  }
+
+  // 狀態 2：preview → 拍照 → 顯示在 canvas
+  if (currentMode === "preview") {
+    if (!regVideo.videoWidth || !regVideo.videoHeight) {
+      showToast("鏡頭準備中，請再按一次");
+      return;
+    }
+
+    previewCanvas.width = regVideo.videoWidth;
+    previewCanvas.height = regVideo.videoHeight;
+    const ctx = previewCanvas.getContext("2d");
+    ctx.drawImage(regVideo, 0, 0);
+
+    regVideo.style.display = "none";
+    previewCanvas.style.display = "block";
+
+    capturedImage = previewCanvas;
+    currentMode = "captured";
+    showToast("拍照成功！");
+    return;
+  }
+
+  // 狀態 3：captured → 再按 → 回到 preview（重新拍攝）
+  if (currentMode === "captured") {
+    await startCamera();
+    if (!cameraStream) return;
+
+    previewCanvas.style.display = "none";
+    regVideo.style.display = "block";
+
+    currentMode = "preview";
+    showToast("重新拍攝模式");
+    return;
+  }
+});
+
+// ---------- 上傳圖片（直接進入 captured 狀態） ----------
 uploadPhoto.addEventListener("change", () => {
   const file = uploadPhoto.files[0];
   if (!file) return;
 
   const img = new Image();
   img.onload = () => {
+    // 顯示 canvas、隱藏其他
+    placeholder.style.display = "none";
+    regVideo.style.display = "none";
+    previewCanvas.style.display = "block";
+
     previewCanvas.width = img.width;
     previewCanvas.height = img.height;
     const ctx = previewCanvas.getContext("2d");
     ctx.drawImage(img, 0, 0);
+
     capturedImage = previewCanvas;
-    showToast("已載入上傳照片！");
+    currentMode = "captured";
+
+    // 若有開鏡頭就關掉
+    stopCamera();
+
+    showToast("已載入上傳照片");
   };
   img.src = URL.createObjectURL(file);
 });
 
-// ---- 方式 B：使用鏡頭拍照 ----
-takePhotoBtn.addEventListener("click", async () => {
-  if (!regVideo.srcObject) {
-    await startCamera();
-    showToast("鏡頭已啟動，再按一次拍照");
+// ---------- 註冊按鈕：寫入 Supabase ----------
+registerBtn.addEventListener("click", async () => {
+  const name = nameInput.value.trim();
+  const nickname = nicknameInput.value.trim();
+  const description = descriptionInput.value.trim();
+  const extraInfo = extraInfoInput.value.trim();
+
+  if (!name) {
+    showToast("姓名是必填欄位");
     return;
   }
 
-  previewCanvas.width = regVideo.videoWidth;
-  previewCanvas.height = regVideo.videoHeight;
-  previewCanvas.getContext("2d").drawImage(regVideo, 0, 0);
-
-  previewCanvas.style.display = "block";  // ← 照片出現在同一框框內
-
-  capturedImage = previewCanvas;
-  showToast("拍照成功！");
-});
-
-
-
-// ---- face-api 模型載入 ----
-const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
-
-async function loadModels() {
-  await Promise.all([
-    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-  ]);
-  console.log("face-api 模型載入完成");
-  showToast("臉部模型載入完成，請上傳或拍照。");
-}
-
-window.addEventListener("load", () => {
-  if (!window.faceapi) {
-    console.error("faceapi 未載入，請檢查 <script> 標籤");
-    showToast("face-api 載入失敗，請稍後重試");
-    return;
-  }
-  loadModels();
-});
-
-// ---- 完成臉部註冊 ----
-submitFaceBtn.addEventListener("click", async () => {
-  if (!createdUserId) {
-    showToast("請先完成 Step 1 建立使用者資料");
-    return;
-  }
   if (!capturedImage) {
-    showToast("請先上傳或拍一張照片！");
+    showToast("請先上傳或拍攝一張照片");
     return;
   }
 
-  submitFaceBtn.disabled = true;
-  submitFaceBtn.textContent = "分析中，請稍候…";
-
-  const detection = await faceapi
-    .detectSingleFace(capturedImage, new faceapi.TinyFaceDetectorOptions())
-    .withFaceLandmarks()
-    .withFaceDescriptor();
-
-  if (!detection) {
-    submitFaceBtn.disabled = false;
-    submitFaceBtn.textContent = "完成註冊並啟用臉部辨識";
-    showToast("偵測不到臉，請換一張清楚正臉的照片。");
+  if (!modelsReady) {
+    showToast("臉部模型尚未載入完成，請稍候再試");
     return;
   }
 
-  const embedding = Array.from(detection.descriptor);
+  registerBtn.disabled = true;
+  registerBtn.textContent = "註冊中…";
 
-  const { error } = await supabase
-    .from("users")
-    .update({ face_embedding: embedding })
-    .eq("id", createdUserId);
+  try {
+    // 1. 用 face-api 從 capturedImage 擷取 embedding
+    const detection = await faceapi
+      .detectSingleFace(
+        capturedImage,
+        new faceapi.TinyFaceDetectorOptions()
+      )
+      .withFaceLandmarks()
+      .withFaceDescriptor();
 
-  submitFaceBtn.disabled = false;
-  submitFaceBtn.textContent = "完成註冊並啟用臉部辨識";
+    if (!detection) {
+      showToast("偵測不到臉，請換照片或重新拍攝");
+      registerBtn.disabled = false;
+      registerBtn.textContent = "註冊";
+      return;
+    }
 
-  if (error) {
-    console.error("寫入 embedding 失敗：", error);
-    showToast("寫入臉部特徵失敗：" + error.message);
-    return;
+    const embedding = Array.from(detection.descriptor);
+
+    // 2. 寫入 Supabase users
+    const { data, error } = await supabase
+      .from("users")
+      .insert([
+        {
+          name,
+          nickname,
+          description,
+          extra_info: extraInfo,
+          face_embedding: embedding,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase insert 錯誤：", error);
+      showToast("註冊失敗：" + error.message);
+      registerBtn.disabled = false;
+      registerBtn.textContent = "註冊";
+      return;
+    }
+
+    console.log("註冊成功：", data);
+    showToast("註冊完成！3 秒後回到首頁");
+
+    // 關掉鏡頭
+    stopCamera();
+
+    // 3 秒後回到 ./index.html
+    setTimeout(() => {
+      window.location.href = "../index.html";
+    }, 3000);
+  } catch (e) {
+    console.error(e);
+    showToast("註冊過程發生錯誤");
+    registerBtn.disabled = false;
+    registerBtn.textContent = "註冊";
   }
-
-  showToast("註冊完成！3 秒後自動前往 WebAR 主頁～", 3000);
-
-  // 停止相機
-  if (cameraStream) {
-    cameraStream.getTracks().forEach((t) => t.stop());
-  }
-
-  // 自動跳轉到 index.html（WebAR 頁面）
-  setTimeout(() => {
-    window.location.href = "../index.html"; // 依你的主頁檔名調整
-  }, 3000);
 });
