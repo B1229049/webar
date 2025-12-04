@@ -60,7 +60,6 @@ nextBtn.addEventListener("click", async () => {
   const nickname = document.getElementById("nickname").value.trim();
   const description = document.getElementById("description").value.trim();
   const extra = document.getElementById("extra").value.trim();
-  const avatarUrl = document.getElementById("avatarUrl").value.trim() || null;
 
   if (!name) {
     showToast("姓名是必填欄位喔！");
@@ -78,7 +77,6 @@ nextBtn.addEventListener("click", async () => {
         nickname,
         description,
         extra_info: extra,
-        avatar_url: avatarUrl
       }
     ])
     .select()
@@ -99,7 +97,7 @@ nextBtn.addEventListener("click", async () => {
 
   // 進到 Step 2
   goToStep(2);
-  startCamera();
+  //startCamera();
 });
 
 backBtn.addEventListener("click", () => {
@@ -137,19 +135,24 @@ uploadPhoto.addEventListener("change", () => {
 });
 
 // ---- 方式 B：使用鏡頭拍照 ----
-takePhotoBtn.addEventListener("click", () => {
-  if (!regVideo.videoWidth || !regVideo.videoHeight) {
-    showToast("鏡頭尚未準備好，請稍候再試");
+takePhotoBtn.addEventListener("click", async () => {
+  if (!regVideo.srcObject) {
+    await startCamera();   // ← 在這裡才開鏡頭
+  }
+
+  if (!regVideo.videoWidth) {
+    showToast("鏡頭準備中，請稍候再按一次");
     return;
   }
 
   previewCanvas.width = regVideo.videoWidth;
   previewCanvas.height = regVideo.videoHeight;
-  const ctx = previewCanvas.getContext("2d");
-  ctx.drawImage(regVideo, 0, 0);
+  previewCanvas.getContext("2d").drawImage(regVideo, 0, 0);
+
   capturedImage = previewCanvas;
   showToast("已拍攝照片！");
 });
+
 
 // ---- face-api 模型載入 ----
 const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
@@ -224,6 +227,6 @@ submitFaceBtn.addEventListener("click", async () => {
 
   // 自動跳轉到 index.html（WebAR 頁面）
   setTimeout(() => {
-    window.location.href = "index.html"; // 依你的主頁檔名調整
+    window.location.href = "../index.html"; // 依你的主頁檔名調整
   }, 3000);
 });
