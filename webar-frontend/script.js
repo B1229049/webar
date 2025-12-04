@@ -1,5 +1,6 @@
 // script.js - Web AR + 臉辨識
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+// import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = "https://msuhvjhznkodpjfjpaia.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zdWh2amh6bmtvZHBqZmpwYWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MzEwMTMsImV4cCI6MjA4MDQwNzAxM30.32jirKcLxE-sF3ICPD_yitBsO42JorbUgahz_1RAqoY";
@@ -20,6 +21,21 @@ const extraInfoEl = document.getElementById("extraInfo");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
+
+if (!window.faceapi) {
+console.error("faceapi 沒載到，請檢查 index.html 的 CDN script");
+return;
+}
+
+const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
+
+await Promise.all([
+faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+]);
+
+console.log("face-api.js models loaded");
 
 // -------------------- 相機 --------------------
 async function startCamera() {
