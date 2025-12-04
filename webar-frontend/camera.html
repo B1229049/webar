@@ -1,41 +1,41 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WebAR - Face Recognition</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebAR + Face Recognition</title>
 
-    <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css" />
 
-    <!-- MediaPipe FaceMesh -->
-    <script src="face_mesh.js"></script>
-    <script src="drawing_utils.js"></script>
-    <script src="camera_utils.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+  <!-- MediaPipe FaceMesh：一定要在 script.js 之前 -->
+  <script src="face_mesh.js"></script>
+  <script src="drawing_utils.js"></script>
+  <script src="camera_utils.js"></script>
 
-    <!-- face-api.js (臉辨識模型) -->
-    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  <!-- face-api.js（UMD，全域變數 window.faceapi） -->
+  <script defer src="face-api.min.js"></script>
 </head>
 
 <body>
-    <!-- 相機 -->
-    <video id="videoElement" autoplay playsinline></video>
+  <!-- 相機畫面 -->
+  <video id="videoElement" autoplay playsinline></video>
 
-    <!-- Landmark 顯示 -->
-    <canvas id="landmarksCanvas"></canvas>
+  <!-- landmark canvas -->
+  <canvas id="landmarksCanvas"></canvas>
 
-    <!-- 寶箱 / 卡片 -->
-    <img id="treasure" src="card.png" alt="Treasure" />
+  <!-- 頭上的寶箱圖 -->
+  <img id="treasure" src="card.png" alt="Treasure" />
 
-    <!-- 使用者資料卡 -->
-    <div id="userCard">
-        <img id="avatar" />
-        <h2 id="name"></h2>
-        <p id="nickname"></p>
-        <p id="description"></p>
-        <p id="extraInfo"></p>
-    </div>
+  <!-- 使用者資料卡 -->
+  <div id="userCard">
+    <img id="avatar" alt="Avatar" />
+    <h2 id="name"></h2>
+    <p id="nickname"></p>
+    <p id="description"></p>
+    <p id="extraInfo"></p>
+  </div>
 
-    <script type="module" src="./script.js"></script>
+  <!-- 主頁邏輯：ES Module -->
+  <script type="module" src="./script.js"></script>
 </body>
 </html>

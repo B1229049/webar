@@ -1,71 +1,22 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>註冊臉部資料</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>註冊臉部資料</title>
 
-    <link rel="stylesheet" href="style.css" />
-    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  <link rel="stylesheet" href="style.css" />
+  <!-- face-api.js -->
+  <script defer src="face-api.min.js"></script>
 </head>
 
 <body>
-    <h1>註冊臉部資料</h1>
+  <h1>註冊臉部資料</h1>
 
-    <video id="regVideo" autoplay playsinline></video>
-    <button id="registerBtn">註冊臉部</button>
+  <video id="regVideo" autoplay playsinline></video>
+  <button id="registerBtn">註冊臉部</button>
 
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-
-        const SUPABASE_URL = "你的 supabase url";
-        const SUPABASE_KEY = "你的 anon key";
-        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        async function startCamera() {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "user" }
-            });
-            document.getElementById("regVideo").srcObject = stream;
-        }
-        startCamera();
-
-        // 載入模型
-        Promise.all([
-            faceapi.nets.tinyFaceDetector.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/weights"),
-            faceapi.nets.faceLandmark68Net.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/weights"),
-            faceapi.nets.faceRecognitionNet.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/weights")
-        ]).then(() => {
-            console.log("face-api.js models loaded");
-        });
-
-        document.getElementById("registerBtn").addEventListener("click", async () => {
-            const video = document.getElementById("regVideo");
-            const detection = await faceapi
-                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-                .withFaceLandmarks()
-                .withFaceDescriptor();
-
-            if (!detection) {
-                alert("找不到臉，請再試一次");
-                return;
-            }
-
-            const embedding = Array.from(detection.descriptor);
-
-            const userId = prompt("請輸入要綁定的使用者 id（數字）：");
-
-            const { error } = await supabase
-                .from("users")
-                .update({ face_embedding: embedding })
-                .eq("id", userId);
-
-            if (error) {
-                alert("更新失敗：" + error.message);
-            } else {
-                alert("臉部資料註冊成功！");
-            }
-        });
-    </script>
+  <!-- 註冊邏輯：ES Module -->
+  <script type="module" src="./register.js"></script>
 </body>
 </html>
