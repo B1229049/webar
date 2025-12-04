@@ -284,7 +284,7 @@ registerBtn.addEventListener("click", async () => {
     stopCamera();
 
     setTimeout(() => {
-      window.location.href = "./index.html";
+      window.location.href = "../index.html";
     }, 3000);
   } catch (e) {
     console.error(e);

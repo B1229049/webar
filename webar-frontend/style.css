@@ -97,3 +97,27 @@ label {
     color: white;
 }
 
+#userTag {
+  position: absolute;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 14px;
+  transform: translate(-50%, -100%);
+  display: none;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.25);
+}
+
+
+#tagName {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+#tagNickname {
+  font-size: 12px;
+  opacity: 0.8;
+}
