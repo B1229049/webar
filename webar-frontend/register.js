@@ -1,4 +1,4 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/esm/index.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ★★★ 改成你自己的 Supabase 設定 ★★★
 const SUPABASE_URL = "https://msuhvjhznkodpjfjpaia.supabase.co";
