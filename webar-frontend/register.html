@@ -3,20 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>註冊臉部資料</title>
-
+  <title>兩階段註冊：資料 → 臉部</title>
   <link rel="stylesheet" href="style.css" />
+
   <!-- face-api.js -->
-  <script defer src="face-api.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 </head>
 
 <body>
-  <h1>註冊臉部資料</h1>
 
-  <video id="regVideo" autoplay playsinline></video>
-  <button id="registerBtn">註冊臉部</button>
+  <div id="step1" class="step">
+    <h2>Step 1：輸入基本資料</h2>
 
-  <!-- 註冊邏輯：ES Module -->
+    <label>姓名：</label>
+    <input type="text" id="name" /><br/>
+
+    <label>暱稱：</label>
+    <input type="text" id="nickname" /><br/>
+
+    <label>介紹：</label>
+    <textarea id="description"></textarea><br/>
+
+    <label>額外資訊：</label>
+    <textarea id="extra"></textarea><br/>
+
+    <label>頭像 URL（可選）：</label>
+    <input type="text" id="avatarUrl" placeholder="https://example.com/photo.jpg" /><br/>
+
+    <button id="nextBtn">下一步 → 臉部註冊</button>
+  </div>
+
+
+  <div id="step2" class="step" style="display:none;">
+    <h2>Step 2：上傳照片或拍照建立臉部資料</h2>
+
+    <button id="backBtn">← 上一步</button><br/><br/>
+
+    <h3>方式 A：上傳照片</h3>
+    <input type="file" id="uploadPhoto" accept="image/*" /><br/><br/>
+
+    <h3>方式 B：拍照</h3>
+    <video id="regVideo" autoplay playsinline></video><br/>
+    <button id="takePhotoBtn">拍照</button><br/><br/>
+
+    <canvas id="previewCanvas"></canvas><br/>
+
+    <button id="submitFaceBtn">完成臉部註冊</button>
+  </div>
+
   <script type="module" src="./register.js"></script>
+
 </body>
 </html>
