@@ -12,27 +12,6 @@ body {
     object-fit: cover;
 }
 
-/* 你的圖片（會跟著頭移動） */
-#treasure {
-    position: absolute;
-    width: 150px;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    cursor: pointer;
-    z-index: 10;
-}
-
-/* Landmark Debug 畫布 */
-#landmarksCanvas {
-    position: absolute;
-    left: 0;
-    top: 0;
-    z-index: 5;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
 
 /* 使用者資料卡片（可選） */
 #userCard {
@@ -67,15 +46,31 @@ body {
 
 
 video {
-    position: fixed;
-    width: 100vw;
-    height: 100vh;
-    object-fit: cover;
+  position: fixed;
+  width: 320px;          /* 視訊寬 */
+  height: 180px;         /* 視訊高（16:9，可自己調） */
+  bottom: 10px;          /* 貼右下角 */
+  right: 10px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  z-index: 1;            /* 在最底層，避免蓋住卡片 */
 }
 
 
-
-#userCard img {
-    width: 100%;
-    border-radius: 10px;
+#landmarksCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
 }
+
+#treasure {
+  position: fixed;
+  width: 150px;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
