@@ -64,8 +64,10 @@ async function main() {
 }
 
 // ---------------- Supabase：只抓一次 users → userCache ----------------
+// ---------------- Supabase：只抓一次 users → userCache ----------------
 async function loadUserCache() {
   console.log("[supabase] 開始載入 users...");
+
   const { data: users, error } = await supabase
     .from("users")
     .select("id, name, nickname, description, extra_info, face_embedding");
@@ -75,35 +77,58 @@ async function loadUserCache() {
     return;
   }
 
-  console.log("[supabase] 原始 users：", users);
+  console.log("[supabase] 原始 users 資料：", users);
 
-  userCache = (users || [])
-    .filter(
-      (u) => Array.isArray(u.face_embedding) && u.face_embedding.length > 0
-    )
-    .map((u) => ({
+  if (!users || users.length === 0) {
+    console.warn("[supabase] users 表目前沒有資料");
+  }
+
+  userCache = [];
+
+  for (const u of users || []) {
+    let emb = u.face_embedding;
+
+    // 1) 如果是字串（例如存成 TEXT / JSON），嘗試 JSON.parse
+    if (typeof emb === "string") {
+      try {
+        const parsed = JSON.parse(emb);
+        emb = parsed;
+      } catch (e) {
+        console.warn("[supabase] face_embedding 無法 JSON.parse：", u.id, emb);
+        continue;
+      }
+    }
+
+    // 2) 如果是物件但不是 Array，也跳過
+    if (!Array.isArray(emb) || emb.length === 0) {
+      console.warn("[supabase] face_embedding 不是 array 或為空：", u.id, emb);
+      continue;
+    }
+
+    userCache.push({
       id: u.id,
       name: u.name,
       nickname: u.nickname,
       description: u.description,
       extra_info: u.extra_info,
-      embedding: new Float32Array(u.face_embedding),
-    }));
+      embedding: new Float32Array(emb),
+    });
+  }
 
   console.log("[supabase] userCache 建立完成，筆數 =", userCache.length);
-
-  // ★ 強制測試：如果有資料，先暫時顯示第一個使用者在畫面左上，看 UI 正不正常
   if (userCache.length > 0) {
     showUserTag(userCache[0]);
-    userTag.style.left = "80px";
-    userTag.style.top = "80px";
-    console.log("[test] 已暫時顯示第一位使用者的名牌在左上角");
+    userTag.style.left = "100px";
+    userTag.style.top = "100px";
+    console.log("[test] 強制顯示第一位使用者的名牌在左上角");
+
     setTimeout(() => {
       userTag.style.display = "none";
-      console.log("[test] 測試名牌隱藏，之後交由臉部辨識控制");
+      console.log("[test] 測試名牌隱藏，接下來交給臉部辨識控制");
     }, 3000);
   }
 }
+
 
 // ---------------- 相機 ----------------
 async function startCamera() {
