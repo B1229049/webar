@@ -322,3 +322,13 @@ body.register-page {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+#regVideo {
+  display: none;        /* 不顯示鏡頭預覽 */
+  width: 0 !important;
+  height: 0 !important;
+}
+
+#previewCanvas {
+  display: none;
+}

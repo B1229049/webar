@@ -137,11 +137,8 @@ uploadPhoto.addEventListener("change", () => {
 // ---- 方式 B：使用鏡頭拍照 ----
 takePhotoBtn.addEventListener("click", async () => {
   if (!regVideo.srcObject) {
-    await startCamera();   // ← 在這裡才開鏡頭
-  }
-
-  if (!regVideo.videoWidth) {
-    showToast("鏡頭準備中，請稍候再按一次");
+    await startCamera();
+    showToast("鏡頭已啟動，再按一次拍照");
     return;
   }
 
@@ -149,9 +146,12 @@ takePhotoBtn.addEventListener("click", async () => {
   previewCanvas.height = regVideo.videoHeight;
   previewCanvas.getContext("2d").drawImage(regVideo, 0, 0);
 
+  previewCanvas.style.display = "block";  // ← 照片出現在同一框框內
+
   capturedImage = previewCanvas;
-  showToast("已拍攝照片！");
+  showToast("拍照成功！");
 });
+
 
 
 // ---- face-api 模型載入 ----
