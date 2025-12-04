@@ -1,15 +1,12 @@
-// script.js
-// 這支檔案會同時負責：
-// 1. Supabase 資料讀取
-// 2. MediaPipe FaceMesh 頭部追蹤 + 卡片跟隨
-
-// ---------- 1. Supabase 設定 ----------
+// ---------------- 1. Supabase 設定 ----------------
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
-// ★ 把這兩個改成你自己的 Supabase 資訊
+// 你的 Supabase 專案網址（你給我的那個）
 const supabaseUrl = 'https://msuhvjhznkodpjfjpaia.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zdWh2amh6bmtvZHBqZmpwYWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MzEwMTMsImV4cCI6MjA4MDQwNzAxM30.32jirKcLxE-sF3ICPD_yitBsO42JorbUgahz_1RAqoY'  // ← 去 Supabase 後台 API 頁貼上
+
+// 到 Supabase 後台 Project Settings → API → 拿 "anon public" 那一串貼進來
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zdWh2amh6bmtvZHBqZmpwYWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MzEwMTMsImV4cCI6MjA4MDQwNzAxM30.32jirKcLxE-sF3ICPD_yitBsO42JorbUgahz_1RAqoY'
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -31,7 +28,7 @@ async function getUserById(id) {
   return data
 }
 
-// ---------- 2. Web AR + FaceMesh ----------
+// ---------------- 2. Web AR + FaceMesh ----------------
 
 window.addEventListener('load', () => {
   const videoElement = document.getElementById('videoElement')
@@ -69,28 +66,31 @@ window.addEventListener('load', () => {
   }
   startCamera()
 
-  // 2. 建立舊版 FaceMesh 物件（支援 faceMesh / FaceMesh 兩種 global）
-  const FaceMeshNS = window.faceMesh || window.FaceMesh
-  if (!FaceMeshNS) {
+  // 2. 取得 FaceMesh 建構子（注意這裡：直接是 FaceMesh，不是 FaceMesh.FaceMesh）
+  //    script 標籤載 face_mesh.js 後，會在 window 掛一個 FaceMesh constructor
+  const FaceMeshCtor = window.FaceMesh || window.faceMesh
+  if (!FaceMeshCtor) {
     console.error('MediaPipe FaceMesh 未正確載入，請檢查 <script src="...face_mesh.js">')
     return
   }
 
-  const mpFaceMesh = new FaceMeshNS.FaceMesh({
+  // 3. 建立 FaceMesh 實例
+  const faceMesh = new FaceMeshCtor({
     locateFile: (file) =>
-      `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.3.1646424915/${file}`
+      // 用 0.4 系列（jsDelivr 上確定存在的版本）
+      `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`
   })
 
-  mpFaceMesh.setOptions({
+  faceMesh.setOptions({
     maxNumFaces: 1,
     refineLandmarks: true,
     minDetectionConfidence: 0.6,
     minTrackingConfidence: 0.6
   })
 
-  mpFaceMesh.onResults(onResults)
+  faceMesh.onResults(onResults)
 
-  // 3. 處理 FaceMesh 結果：畫紅點 + 移動圖片到頭上
+  // 4. 處理 FaceMesh 結果：畫紅點 + 移動圖片到頭上
   function onResults(results) {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
@@ -100,7 +100,7 @@ window.addEventListener('load', () => {
 
     const landmarks = results.multiFaceLandmarks[0]
 
-    // Debug：畫出紅點（你不想看點點可以註解掉這段）
+    // Debug：畫出紅點（如果覺得太花可以註解掉）
     landmarks.forEach((pt) => {
       const x = pt.x * canvas.width
       const y = pt.y * canvas.height
@@ -110,7 +110,7 @@ window.addEventListener('load', () => {
       ctx.fill()
     })
 
-    // 取鼻樑附近幾個點的平均，當作頭中心
+    // 取鼻樑附近幾個點平均，當作頭中心
     const ids = [1, 4, 5]
     let sumX = 0
     let sumY = 0
@@ -130,19 +130,19 @@ window.addEventListener('load', () => {
     treasure.style.top = `${screenY}px`
   }
 
-  // 4. CameraUtils：把 video 畫面送進 mpFaceMesh
+  // 5. CameraUtils：把 video 畫面送進 faceMesh
   const camera = new Camera(videoElement, {
     onFrame: async () => {
-      await mpFaceMesh.send({ image: videoElement })
+      await faceMesh.send({ image: videoElement })
     },
     width: 1280,
     height: 720
   })
   camera.start()
 
-  // 5. 點擊圖片 → 用 Supabase 撈資料 → 顯示在 userCard
+  // 6. 點擊圖片 → 用 Supabase 撈資料 → 顯示在 userCard
   treasure.addEventListener('click', async () => {
-    const userId = 1 // 先固定 1，有需要可以改成動態
+    const userId = 1 // 先寫死 1，有需要再改成動態
 
     try {
       const user = await getUserById(userId)
