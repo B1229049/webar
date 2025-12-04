@@ -75,11 +75,11 @@ window.addEventListener('load', () => {
   }
 
   // 3. 建立 FaceMesh 實例
-  const faceMesh = new FaceMeshCtor({
+
+    const faceMesh = new FaceMeshCtor({
     locateFile: (file) =>
-      // 用 0.4 系列（jsDelivr 上確定存在的版本）
-      `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`
-  })
+        `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`
+    })
 
   faceMesh.setOptions({
     maxNumFaces: 1,
