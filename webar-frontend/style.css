@@ -64,3 +64,18 @@ body {
     margin: 3px 0;
     font-size: 14px;
 }
+
+
+video {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+}
+
+
+
+#userCard img {
+    width: 100%;
+    border-radius: 10px;
+}
