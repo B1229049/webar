@@ -3,55 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>兩階段註冊：資料 → 臉部</title>
+  <title>註冊使用者與臉部資料</title>
+
   <link rel="stylesheet" href="style.css" />
 
-  <!-- face-api.js -->
+  <!-- face-api.js（臉部特徵） -->
   <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 </head>
 
-<body>
+<!-- 加上 register-page，讓樣式只影響這一頁 -->
+<body class="register-page">
+  <div class="register-wrapper">
+    <div class="register-card">
 
-  <div id="step1" class="step">
-    <h2>Step 1：輸入基本資料</h2>
+      <!-- 步驟指示器 -->
+      <div class="step-indicator">
+        <div class="step-dot active" id="dot-step1">1</div>
+        <div class="step-line"></div>
+        <div class="step-dot" id="dot-step2">2</div>
+      </div>
 
-    <label>姓名：</label>
-    <input type="text" id="name" /><br/>
+      <!-- Step 1：基本資料 -->
+      <div id="step1" class="step-panel">
+        <h2>Step 1｜建立使用者資料</h2>
+        <p class="step-subtitle">先輸入基本資訊，接著再註冊臉部辨識。</p>
 
-    <label>暱稱：</label>
-    <input type="text" id="nickname" /><br/>
+        <label>姓名（必填）</label>
+        <input type="text" id="name" placeholder="例如：陳小明" />
 
-    <label>介紹：</label>
-    <textarea id="description"></textarea><br/>
+        <label>暱稱</label>
+        <input type="text" id="nickname" placeholder="例如：Simon" />
 
-    <label>額外資訊：</label>
-    <textarea id="extra"></textarea><br/>
+        <label>介紹</label>
+        <textarea id="description" rows="3" placeholder="簡單介紹一下自己～"></textarea>
 
-    <label>頭像 URL（可選）：</label>
-    <input type="text" id="avatarUrl" placeholder="https://example.com/photo.jpg" /><br/>
+        <label>額外資訊</label>
+        <textarea id="extra" rows="2" placeholder="興趣 / 身分 / 備註…"></textarea>
 
-    <button id="nextBtn">下一步 → 臉部註冊</button>
+        <label>頭像網址（可選）</label>
+        <input type="text" id="avatarUrl" placeholder="https://example.com/photo.jpg" />
+
+        <button id="nextBtn" class="btn primary-btn">下一步：註冊臉部 →</button>
+      </div>
+
+      <!-- Step 2：臉部註冊 -->
+      <div id="step2" class="step-panel" style="display:none;">
+        <h2>Step 2｜上傳或拍照註冊臉部</h2>
+        <p class="step-subtitle">請選擇一張清楚的正臉照片，或用鏡頭拍一張。</p>
+
+        <button id="backBtn" class="btn ghost-btn">← 回上一頁</button>
+
+        <div class="section">
+          <h3>方式 A：上傳照片</h3>
+          <input type="file" id="uploadPhoto" accept="image/*" />
+          <small>建議使用單人、正面的清晰照片。</small>
+        </div>
+
+        <div class="section">
+          <h3>方式 B：使用鏡頭拍照</h3>
+          <video id="regVideo" autoplay playsinline></video>
+          <button id="takePhotoBtn" class="btn secondary-btn">拍一張照片</button>
+        </div>
+
+        <div class="section">
+          <h3>預覽</h3>
+          <canvas id="previewCanvas"></canvas>
+          <small>上傳或拍照後，會在這裡顯示使用的照片。</small>
+        </div>
+
+        <button id="submitFaceBtn" class="btn primary-btn full-width">
+          完成註冊並啟用臉部辨識
+        </button>
+      </div>
+    </div>
   </div>
 
-
-  <div id="step2" class="step" style="display:none;">
-    <h2>Step 2：上傳照片或拍照建立臉部資料</h2>
-
-    <button id="backBtn">← 上一步</button><br/><br/>
-
-    <h3>方式 A：上傳照片</h3>
-    <input type="file" id="uploadPhoto" accept="image/*" /><br/><br/>
-
-    <h3>方式 B：拍照</h3>
-    <video id="regVideo" autoplay playsinline></video><br/>
-    <button id="takePhotoBtn">拍照</button><br/><br/>
-
-    <canvas id="previewCanvas"></canvas><br/>
-
-    <button id="submitFaceBtn">完成臉部註冊</button>
-  </div>
+  <!-- Toast 通知 -->
+  <div id="toast" class="toast"></div>
 
   <script type="module" src="./register.js"></script>
-
 </body>
 </html>
