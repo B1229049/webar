@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web AR - FaceMesh 0.4</title>
+
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- 舊版 MediaPipe FaceMesh，可在 file:// 下直接使用 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.3.1646424915/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.1.1620248257/camera_utils.js"></script>
+
+
+</head>
+
+<body>
+    <!-- 相機畫面 -->
+    <video id="videoElement" autoplay playsinline></video>
+
+    <!-- 你的圖片（寶箱 / 卡片） -->
+    <img id="treasure" src="card.png" alt="Treasure" />
+
+    <!-- Landmark 視覺化（紅點） -->
+    <canvas id="landmarksCanvas"></canvas>
+
+    <!-- 使用者資料卡（如果沒用後端也可以暫時忽略） -->
+    <div id="userCard">
+        <img id="avatar" src="" alt="Avatar" />
+        <h2 id="name"></h2>
+        <p id="nickname"></p>
+        <p id="description"></p>
+        <p id="extraInfo"></p>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
