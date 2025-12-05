@@ -74,27 +74,11 @@ video {
   z-index: 10;
 }
 
-.step {
-  max-width: 400px;
-  margin: auto;
-}
-
-input, textarea {
-  width: 100%;
-  margin-bottom: 10px;
-  padding: 6px;
-  font-size: 14px;
-}
-
 canvas {
   width: 100%;
   max-width: 350px;
   margin-top: 10px;
   border: 1px solid #ccc;
-}
-
-label {
-    color: white;
 }
 
 #userTag {
