@@ -14,9 +14,8 @@ const video = document.getElementById("videoElement");
 const canvas = document.getElementById("landmarksCanvas");
 const ctx = canvas.getContext("2d");
 
-const userTag = document.getElementById("userTag");
-const tagName = document.getElementById("tagName");
-const tagNickname = document.getElementById("tagNickname");
+// ✅ 多人名牌容器（HTML 要有 <div id="tagLayer"></div>）
+const tagLayer = document.getElementById("tagLayer");
 
 // 尺寸
 function resizeCanvas() {
@@ -63,7 +62,6 @@ async function main() {
   setupFaceMesh();
 }
 
-// ---------------- Supabase：只抓一次 users → userCache ----------------
 // ---------------- Supabase：只抓一次 users → userCache ----------------
 async function loadUserCache() {
   console.log("[supabase] 開始載入 users...");
@@ -116,19 +114,7 @@ async function loadUserCache() {
   }
 
   console.log("[supabase] userCache 建立完成，筆數 =", userCache.length);
-  if (userCache.length > 0) {
-    showUserTag(userCache[0]);
-    userTag.style.left = "100px";
-    userTag.style.top = "100px";
-    console.log("[test] 強制顯示第一位使用者的名牌在左上角");
-
-    setTimeout(() => {
-      userTag.style.display = "none";
-      console.log("[test] 測試名牌隱藏，接下來交給臉部辨識控制");
-    }, 3000);
-  }
 }
-
 
 // ---------------- 相機 ----------------
 async function startCamera() {
@@ -160,7 +146,7 @@ function setupFaceMesh() {
   });
 
   faceMesh.setOptions({
-    maxNumFaces: 1,
+    maxNumFaces: 5,          // ✅ 一次最多偵測 5 張臉
     refineLandmarks: true,
     minDetectionConfidence: 0.6,
     minTrackingConfidence: 0.6,
@@ -180,88 +166,109 @@ function setupFaceMesh() {
   camera.start();
 }
 
-// ---------------- FaceMesh callback：頭部追蹤 + 每秒辨識一次 ----------------
+// ---------------- FaceMesh callback：畫 landmarks & 每秒觸發一次辨識 ----------------
 async function onResults(results) {
+  // 清畫面
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // 這裡你可以照原本畫 landmark 的方式去畫（省略）
+  // 例如：results.multiFaceLandmarks.forEach(...) 畫點跟線
+
   if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
-    userTag.style.display = "none";
+    // 沒人臉就清掉所有名牌
+    clearAllUserTags();
     return;
   }
-
-  const lm = results.multiFaceLandmarks[0];
-
-  const forehead = lm[10];
-  const chin = lm[152];
-
-  const headHeight = (chin.y - forehead.y) * window.innerHeight;
-  const screenX = forehead.x * window.innerWidth;
-  const screenY = forehead.y * window.innerHeight - headHeight * 0.8;
-
-  // 放在頭上
-  userTag.style.left = `${screenX}px`;
-  userTag.style.top = `${screenY}px`;
 
   // 每 1 秒做一次辨識（只用 userCache，完全不打 DB）
   const now = Date.now();
   if (modelsReady && now - lastRecognizeTime > 1000) {
     lastRecognizeTime = now;
-    const matchedUser = await recognizeFaceLocal();
-    if (matchedUser) {
-      showUserTag(matchedUser);
-    } else {
-      userTag.style.display = "none";
-    }
+    await recognizeFacesLocalMulti();
   }
 }
 
-// ---------------- 臉部辨識（本地計算，不打 DB） ----------------
-async function recognizeFaceLocal() {
+// ---------------- 多人臉部辨識（本地計算，不打 DB） ----------------
+async function recognizeFacesLocalMulti() {
+  clearAllUserTags();
+
   if (!userCache.length) {
     console.warn("[recognize] userCache 為空，無法比對臉部");
-    return null;
+    return;
   }
 
-  const detection = await faceapi
-    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+  const detections = await faceapi
+    .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
     .withFaceLandmarks()
-    .withFaceDescriptor();
+    .withFaceDescriptors();
 
-  if (!detection) {
+  if (!detections || detections.length === 0) {
     console.log("[recognize] 畫面中偵測不到臉");
-    return null;
+    return;
   }
 
-  const desc = detection.descriptor;
+  console.log(`[recognize] 偵測到人數：${detections.length}`);
 
-  let bestUser = null;
-  let bestDist = Infinity;
+  const rect = video.getBoundingClientRect();
+  const videoW = video.videoWidth || 1280;
+  const videoH = video.videoHeight || 720;
+  const scaleX = rect.width / videoW;
+  const scaleY = rect.height / videoH;
 
-  for (const user of userCache) {
-    const dist = faceapi.euclideanDistance(desc, user.embedding);
-    if (dist < bestDist) {
-      bestDist = dist;
-      bestUser = user;
+  const THRESHOLD = 0.6; // 你之後可以再調整
+
+  for (const det of detections) {
+    const desc = det.descriptor;
+
+    // 找出距離最近的 user
+    let bestUser = null;
+    let bestDist = Infinity;
+    for (const user of userCache) {
+      const dist = faceapi.euclideanDistance(desc, user.embedding);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestUser = user;
+      }
     }
-  }
 
-  console.log("[recognize] 最小距離 =", bestDist, "；使用者 =", bestUser?.name);
+    console.log("[recognize] 最小距離 =", bestDist, "；使用者 =", bestUser?.name);
 
-  // 門檻可以先放寬一點（例如 0.6），你可以之後再調。
-  const THRESHOLD = 0.6;
-  if (bestUser && bestDist < THRESHOLD) {
+    if (!bestUser || bestDist >= THRESHOLD) {
+      // 沒有通過門檻就不顯示名牌
+      continue;
+    }
+
     console.log("[recognize] 通過門檻，辨識為：", bestUser.name);
-    return bestUser;
-  }
 
-  return null;
+    // 利用偵測到的 bbox 當作頭部位置
+    const box = det.detection.box;
+
+    // bBox 座標是以原始 video 像素為單位，要換算成實際畫面座標
+    const faceCenterX = (box.x + box.width / 2) * scaleX + rect.left;
+    const faceTopY = (box.y - box.height * 0.2) * scaleY + rect.top; // 稍微往上放
+
+    createUserTag(bestUser, faceCenterX, faceTopY);
+  }
 }
 
-// ---------------- 顯示浮動使用者名牌 ----------------
-function showUserTag(user) {
-  console.log("[showUserTag] 顯示：", user.name);  // ← 可以幫你確認有沒有被呼叫
-  tagName.textContent = user.name || "";
-  tagNickname.textContent = user.nickname ? `@${user.nickname}` : "";
+// ---------------- 建立 / 清除 多人名牌 ----------------
+function clearAllUserTags() {
+  if (!tagLayer) return;
+  tagLayer.innerHTML = "";
+}
 
-  userTag.style.display = "block";
+function createUserTag(user, screenX, screenY) {
+  if (!tagLayer) return;
+
+  const tag = document.createElement("div");
+  tag.className = "user-tag";
+  tag.style.left = `${screenX}px`;
+  tag.style.top = `${screenY}px`;
+
+  tag.innerHTML = `
+    <div class="name">${user.name || ""}</div>
+    <div class="nickname">${user.nickname ? "@" + user.nickname : ""}</div>
+  `;
+
+  tagLayer.appendChild(tag);
 }

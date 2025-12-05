@@ -1,107 +1,90 @@
-body {
-    margin: 0;
-    overflow: hidden;
-    background: #000;
-    font-family: Arial, sans-serif;
+/* 讓整個相機區域全螢幕 & 疊圖層 */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
-#videoElement {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-
-/* 使用者資料卡片（可選） */
-#userCard {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    width: 260px;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 15px;
-    border-radius: 12px;
-    display: none;
-    backdrop-filter: blur(10px);
-    z-index: 20;
-}
-
-#userCard img {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-}
-
-#userCard h2 {
-    margin: 10px 0 5px;
-    font-size: 20px;
-}
-
-#userCard p {
-    margin: 3px 0;
-    font-size: 14px;
-}
-
-
-video {
-  position: fixed;
-  width: 320px;          /* 視訊寬 */
-  height: 180px;         /* 視訊高（16:9，可自己調） */
-  bottom: 10px;          /* 貼右下角 */
-  right: 10px;
-  object-fit: cover;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
-  z-index: 1;            /* 在最底層，避免蓋住卡片 */
-}
-
-
-#landmarksCanvas {
-  position: fixed;
-  top: 0;
-  left: 0;
+/* 外層包 video / canvas / tagLayer */
+#cameraWrapper {
+  position: relative;
   width: 100vw;
   height: 100vh;
-  pointer-events: none;
+  overflow: hidden;
 }
 
-#treasure {
-  position: fixed;
-  width: 150px;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-}
-
-canvas {
-  width: 100%;
-  max-width: 350px;
-  margin-top: 10px;
-  border: 1px solid #ccc;
-}
-
-#userTag {
+/* 讓 video / canvas 填滿畫面 */
+#videoElement,
+#landmarksCanvas {
   position: absolute;
-  padding: 6px 10px;
-  background: rgba(0,0,0,0.7);
-  border-radius: 10px;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 多人名牌所在的圖層 */
+#tagLayer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 不擋住點擊 */
+}
+
+/* 每一個人的名牌 */
+.user-tag {
+  position: absolute;
+  transform: translate(-50%, -100%); /* 讓 anchor 點在頭頂中央 */
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 8px;
+  padding: 4px 8px;
   color: #fff;
-  font-size: 14px;
-  transform: translate(-50%, -100%);
-  display: none;
-  pointer-events: none;
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.25);
-  z-index: 10;   /* ⭐ 很重要：不然可能被 <video> 或 <canvas> 擋掉 */
-}
-
-#tagName {
-  font-weight: 700;
-  font-size: 16px;
-}
-
-#tagNickname {
   font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+}
+.user-tag .name {
+  font-weight: bold;
+}
+.user-tag .nickname {
+  font-size: 11px;
   opacity: 0.8;
+}
+
+/* 你原本的 userCard 想固定在右下角之類可以像這樣 */
+#userCard {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 220px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(6px);
+  display: none; /* 先隱藏，需要時再用 JS 顯示 */
+}
+#userCard img#avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto 8px;
+}
+#userCard h2 {
+  font-size: 16px;
+  margin: 0 0 4px;
+  text-align: center;
+}
+#userCard p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
 }
