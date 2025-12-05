@@ -182,7 +182,7 @@ async function onResults(results) {
 
   // 每 1 秒做一次辨識（只用 userCache，完全不打 DB）
   const now = Date.now();
-  if (modelsReady && now - lastRecognizeTime > 1000) {
+  if (modelsReady && now - lastRecognizeTime > 200) {
     lastRecognizeTime = now;
     await recognizeFacesLocalMulti();
   }
