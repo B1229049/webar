@@ -36,14 +36,14 @@ let lastFaceLandmarks = null;
 // 目前辨識到的人：[{ meshIndex, user }]
 let trackedFaces = [];
 
-// face-api 偵測器參數（載入模型後設定）
+// face-api 偵測器參數
 let detectorOptions = null;
 
-// ⭐ 名牌的平滑位置狀態：key -> { el, x, y }
+// ⭐ 名牌的平滑位置狀態：key = meshIndex -> { el, x, y, userId }
 const tagStates = new Map();
 
 // 平滑係數（0~1，越大越跟得緊，越小越滑順）
-const SMOOTHING = 0.2;
+const SMOOTHING = 0.25;
 
 // ---------------- 啟動 ----------------
 window.addEventListener("load", () => {
@@ -67,9 +67,9 @@ async function main() {
   modelsReady = true;
   console.log("[init] face-api 模型載入完成");
 
-  // 設定偵測器參數（在模型載入完成後設定）
+  // 偵測器參數
   detectorOptions = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 320,      // 解析度：224/320/416，越高越準但越慢
+    inputSize: 320,      // 224/320/416，越高越準但越慢
     scoreThreshold: 0.4, // 越低會抓到更多臉
   });
 
@@ -225,16 +225,21 @@ function updateTagPositionsFromMesh() {
   const W = rect.width;
   const H = rect.height;
 
-  // 記錄這一幀有出現的 tag key，等一下用來刪掉消失的人
-  const activeKeys = new Set();
-
+  // 先把 trackedFaces 做成 map：meshIndex -> user
+  const faceMap = new Map();
   for (const tf of trackedFaces) {
-    const meshIndex = tf.meshIndex;
-    const user = tf.user;
-    const lm = lastFaceLandmarks[meshIndex];
-    if (!lm) continue;
+    faceMap.set(tf.meshIndex, tf.user);
+  }
 
-    // 取額頭 + 下巴，估計頭高度，讓名牌浮在頭上
+  const activeKeys = new Set(); // 這一幀有出現的 meshIndex
+
+  lastFaceLandmarks.forEach((lm, meshIndex) => {
+    const user = faceMap.get(meshIndex);
+    if (!user) {
+      // 沒有辨識出這張臉，就不顯示名牌（你也可以改成顯示 "?"）
+      return;
+    }
+
     const forehead = lm[10];
     const chin = lm[152];
 
@@ -242,13 +247,12 @@ function updateTagPositionsFromMesh() {
     const targetX = forehead.x * W;
     const targetY = forehead.y * H - headHeight * 0.8;
 
-    // 用 user.id 當 key（也可以用 `${user.id}-${meshIndex}`）
-    const key = String(user.id);
+    const key = String(meshIndex);
     activeKeys.add(key);
 
     let state = tagStates.get(key);
 
-    // 第一次看到這個人：建立名牌，起始位置直接放在 target
+    // 第一次看到這張臉：建立名牌，起始位置直接放在 target
     if (!state) {
       const el = document.createElement("div");
       el.className = "user-tag";
@@ -262,9 +266,19 @@ function updateTagPositionsFromMesh() {
         el,
         x: targetX,
         y: targetY,
+        userId: user.id,
       };
       tagStates.set(key, state);
     } else {
+      // 如果這張臉的 user 換人了，更新內容
+      if (state.userId !== user.id) {
+        state.el.innerHTML = `
+          <div class="name">${user.name || ""}</div>
+          <div class="nickname">${user.nickname ? "@" + user.nickname : ""}</div>
+        `;
+        state.userId = user.id;
+      }
+
       // 已存在：做平滑移動（lerp）
       state.x = state.x + (targetX - state.x) * SMOOTHING;
       state.y = state.y + (targetY - state.y) * SMOOTHING;
@@ -273,9 +287,9 @@ function updateTagPositionsFromMesh() {
     // 套用樣式
     state.el.style.left = `${state.x}px`;
     state.el.style.top = `${state.y}px`;
-  }
+  });
 
-  // 把這一幀沒出現的 tag 移除（人走掉了）
+  // 把這一幀沒出現的 meshIndex 的名牌移除（臉不見了）
   for (const [key, state] of tagStates.entries()) {
     if (!activeKeys.has(key)) {
       if (state.el && state.el.parentNode === tagLayer) {
@@ -298,7 +312,6 @@ async function recognizeFacesLocalMulti() {
   }
 
   if (!detectorOptions) {
-    // 理論上 main() 會設定好，這裡只是保險
     detectorOptions = new faceapi.TinyFaceDetectorOptions({
       inputSize: 320,
       scoreThreshold: 0.4,
@@ -329,7 +342,8 @@ async function recognizeFacesLocalMulti() {
 
   const THRESHOLD = 0.75; // 可以依實測再調整
 
-  const newTracked = [];
+  // 暫存：meshIndex -> { user, userDist }
+  const meshAssign = new Map();
 
   // 對每一個 face-api 偵測結果：
   for (const det of detections) {
@@ -358,7 +372,7 @@ async function recognizeFacesLocalMulti() {
     const detCx = (box.x + box.width / 2) / videoW;
     const detCy = (box.y + box.height / 2) / videoH;
 
-    // 3) 找離它最近的 FaceMesh 臉，綁定 index
+    // 3) 找離它最近的 FaceMesh 臉，綁定 meshIndex
     let bestMeshIndex = -1;
     let bestMeshDist2 = Infinity;
     meshCenters.forEach((mc, idx) => {
@@ -373,18 +387,27 @@ async function recognizeFacesLocalMulti() {
 
     if (bestMeshIndex === -1) continue;
 
-    console.log(
-      "[recognize] 綁定 FaceMesh index =", bestMeshIndex,
-      " => user =", bestUser.name
-    );
+    // 4) 確保一個 meshIndex 只會被指派一個最佳 user
+    const exist = meshAssign.get(bestMeshIndex);
+    if (!exist || bestUserDist < exist.userDist) {
+      meshAssign.set(bestMeshIndex, {
+        user: bestUser,
+        userDist: bestUserDist,
+      });
+    }
+  }
 
+  // 把指派結果轉成 trackedFaces 陣列
+  const newTracked = [];
+  for (const [meshIndex, info] of meshAssign.entries()) {
     newTracked.push({
-      meshIndex: bestMeshIndex,
-      user: bestUser,
+      meshIndex,
+      user: info.user,
     });
   }
 
   trackedFaces = newTracked;
+  console.log("[recognize] trackedFaces =", trackedFaces);
 }
 
 // ---------------- 建立 / 清除 多人名牌 ----------------
