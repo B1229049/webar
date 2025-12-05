@@ -14,7 +14,7 @@ const video = document.getElementById("videoElement");
 const canvas = document.getElementById("landmarksCanvas");
 const ctx = canvas.getContext("2d");
 
-// ✅ 多人名牌容器（HTML 要有 <div id="tagLayer"></div>）
+// 多人名牌容器
 const tagLayer = document.getElementById("tagLayer");
 
 // 尺寸
@@ -27,8 +27,20 @@ window.addEventListener("resize", resizeCanvas);
 
 // ---------------- 狀態 ----------------
 let modelsReady = false;
-let userCache = [];      // 只在載入時寫入一次
+let userCache = [];           // 只在載入時寫入一次
 let lastRecognizeTime = 0;
+
+// FaceMesh 目前看到的 landmark
+let lastFaceLandmarks = null; // array of faces, each is array of 468 points
+
+// 目前辨識到的人：[{ meshIndex, user }]
+let trackedFaces = [];
+
+// face-api 偵測器參數（比較靈敏）
+const detectorOptions = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 320,      // 解析度，越高越準但越慢，可調 224/320/416
+  scoreThreshold: 0.4, // 越低會抓到更多臉
+});
 
 // ---------------- 啟動 ----------------
 window.addEventListener("load", () => {
@@ -146,7 +158,7 @@ function setupFaceMesh() {
   });
 
   faceMesh.setOptions({
-    maxNumFaces: 5,          // ✅ 一次最多偵測 5 張臉
+    maxNumFaces: 5,          // 一次最多偵測 5 張臉
     refineLandmarks: true,
     minDetectionConfidence: 0.6,
     minTrackingConfidence: 0.6,
@@ -166,89 +178,155 @@ function setupFaceMesh() {
   camera.start();
 }
 
-// ---------------- FaceMesh callback：畫 landmarks & 每秒觸發一次辨識 ----------------
+// ---------------- FaceMesh callback：每幀更新頭部位置 + 定期觸發辨識 ----------------
 async function onResults(results) {
-  // 清畫面
+  // 1. 畫面清掉（如果有要畫 landmark 可以在這裡畫）
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 這裡你可以照原本畫 landmark 的方式去畫（省略）
-  // 例如：results.multiFaceLandmarks.forEach(...) 畫點跟線
-
   if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
-    // 沒人臉就清掉所有名牌
+    lastFaceLandmarks = null;
+    trackedFaces = [];
     clearAllUserTags();
     return;
   }
 
-  // 每 1 秒做一次辨識（只用 userCache，完全不打 DB）
+  // 把最新的 landmarks 存起來，給辨識 / 給名牌定位用
+  lastFaceLandmarks = results.multiFaceLandmarks;
+
+  // 2. 每幀根據 FaceMesh 更新名牌位置（高 FPS）
+  updateTagPositionsFromMesh();
+
+  // 3. 每 1 秒跑一次 face-api 做身份辨識（低頻率）
   const now = Date.now();
-  if (modelsReady && now - lastRecognizeTime > 200) {
+  if (modelsReady && now - lastRecognizeTime > 1000) {
     lastRecognizeTime = now;
     await recognizeFacesLocalMulti();
   }
 }
 
-// ---------------- 多人臉部辨識（本地計算，不打 DB） ----------------
-async function recognizeFacesLocalMulti() {
+// ---------------- 依照 FaceMesh landmark 更新名牌位置（每幀呼叫） ----------------
+function updateTagPositionsFromMesh() {
+  if (!lastFaceLandmarks || trackedFaces.length === 0) {
+    clearAllUserTags();
+    return;
+  }
+
+  const rect = video.getBoundingClientRect();
+  const W = rect.width;
+  const H = rect.height;
+
+  // 先清空，再依目前 trackedFaces 重建名牌
   clearAllUserTags();
 
+  for (const tf of trackedFaces) {
+    const meshIndex = tf.meshIndex;
+    const user = tf.user;
+    const lm = lastFaceLandmarks[meshIndex];
+    if (!lm) continue;
+
+    // 取額頭 + 下巴，估計頭高度，讓名牌浮在頭上
+    const forehead = lm[10];
+    const chin = lm[152];
+
+    const headHeight = (chin.y - forehead.y) * H;
+    const screenX = rect.left + forehead.x * W;
+    const screenY = rect.top + forehead.y * H - headHeight * 0.8;
+
+    createUserTag(user, screenX, screenY);
+  }
+}
+
+// ---------------- 多人臉部辨識（本地計算，不打 DB） ----------------
+async function recognizeFacesLocalMulti() {
   if (!userCache.length) {
     console.warn("[recognize] userCache 為空，無法比對臉部");
     return;
   }
+  if (!lastFaceLandmarks || !lastFaceLandmarks.length) {
+    console.warn("[recognize] 沒有 FaceMesh 資料，略過辨識");
+    return;
+  }
 
   const detections = await faceapi
-    .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+    .detectAllFaces(video, detectorOptions)
     .withFaceLandmarks()
     .withFaceDescriptors();
 
   if (!detections || detections.length === 0) {
     console.log("[recognize] 畫面中偵測不到臉");
+    trackedFaces = [];
     return;
   }
 
-  console.log(`[recognize] 偵測到人數：${detections.length}`);
+  console.log(`[recognize] face-api 偵測到人數：${detections.length}`);
 
-  const rect = video.getBoundingClientRect();
   const videoW = video.videoWidth || 1280;
   const videoH = video.videoHeight || 720;
-  const scaleX = rect.width / videoW;
-  const scaleY = rect.height / videoH;
 
-  const THRESHOLD = 0.6; // 你之後可以再調整
+  // 先算 FaceMesh 每一張臉的大概中心（用額頭點）
+  const meshCenters = lastFaceLandmarks.map((lm) => {
+    const f = lm[10]; // 額頭附近
+    return { cx: f.x, cy: f.y }; // 已經是 0~1 normalized
+  });
 
+  const THRESHOLD = 0.75; // 你可以再微調
+
+  const newTracked = [];
+
+  // 對每一個 face-api 偵測結果：
   for (const det of detections) {
     const desc = det.descriptor;
 
-    // 找出距離最近的 user
+    // 1) 先用 embedding 找出最像的 user
     let bestUser = null;
-    let bestDist = Infinity;
+    let bestUserDist = Infinity;
     for (const user of userCache) {
       const dist = faceapi.euclideanDistance(desc, user.embedding);
-      if (dist < bestDist) {
-        bestDist = dist;
+      if (dist < bestUserDist) {
+        bestUserDist = dist;
         bestUser = user;
       }
     }
 
-    console.log("[recognize] 最小距離 =", bestDist, "；使用者 =", bestUser?.name);
+    console.log("[recognize] 候選 user =", bestUser?.name, " dist =", bestUserDist);
 
-    if (!bestUser || bestDist >= THRESHOLD) {
-      // 沒有通過門檻就不顯示名牌
+    if (!bestUser || bestUserDist >= THRESHOLD) {
+      // 未通過門檻就不畫名牌
       continue;
     }
 
-    console.log("[recognize] 通過門檻，辨識為：", bestUser.name);
-
-    // 利用偵測到的 bbox 當作頭部位置
+    // 2) 算這個 detection 在 video 中心（normalize 到 0~1）
     const box = det.detection.box;
+    const detCx = (box.x + box.width / 2) / videoW;
+    const detCy = (box.y + box.height / 2) / videoH;
 
-    // bBox 座標是以原始 video 像素為單位，要換算成實際畫面座標
-    const faceCenterX = (box.x + box.width / 2) * scaleX + rect.left;
-    const faceTopY = (box.y - box.height * 0.2) * scaleY + rect.top; // 稍微往上放
+    // 3) 找離它最近的 FaceMesh 臉，綁定 index
+    let bestMeshIndex = -1;
+    let bestMeshDist2 = Infinity;
+    meshCenters.forEach((mc, idx) => {
+      const dx = mc.cx - detCx;
+      const dy = mc.cy - detCy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestMeshDist2) {
+        bestMeshDist2 = d2;
+        bestMeshIndex = idx;
+      }
+    });
 
-    createUserTag(bestUser, faceCenterX, faceTopY);
+    if (bestMeshIndex === -1) continue;
+
+    console.log(
+      "[recognize] 綁定 FaceMesh index =", bestMeshIndex,
+      " => user =", bestUser.name
+    );
+
+    newTracked.push({
+      meshIndex: bestMeshIndex,
+      user: bestUser,
+    });
   }
+
+  trackedFaces = newTracked;
 }
 
 // ---------------- 建立 / 清除 多人名牌 ----------------
