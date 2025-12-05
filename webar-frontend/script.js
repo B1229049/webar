@@ -14,7 +14,7 @@ const video = document.getElementById("videoElement");
 const canvas = document.getElementById("landmarksCanvas");
 const ctx = canvas.getContext("2d");
 
-// 多人名牌容器
+// 多人名牌容器（camera.html 裡要有 <div id="tagLayer"></div>）
 const tagLayer = document.getElementById("tagLayer");
 
 // 尺寸
@@ -30,17 +30,20 @@ let modelsReady = false;
 let userCache = [];           // 只在載入時寫入一次
 let lastRecognizeTime = 0;
 
-// FaceMesh 目前看到的 landmark
-let lastFaceLandmarks = null; // array of faces, each is array of 468 points
+// FaceMesh 目前看到的 landmarks：array of faces, each is array of 468 points
+let lastFaceLandmarks = null;
 
 // 目前辨識到的人：[{ meshIndex, user }]
 let trackedFaces = [];
 
-// face-api 偵測器參數（比較靈敏）
-const detectorOptions = new faceapi.TinyFaceDetectorOptions({
-  inputSize: 320,      // 解析度，越高越準但越慢，可調 224/320/416
-  scoreThreshold: 0.4, // 越低會抓到更多臉
-});
+// face-api 偵測器參數（載入模型後設定）
+let detectorOptions = null;
+
+// ⭐ 名牌的平滑位置狀態：key -> { el, x, y }
+const tagStates = new Map();
+
+// 平滑係數（0~1，越大越跟得緊，越小越滑順）
+const SMOOTHING = 0.2;
 
 // ---------------- 啟動 ----------------
 window.addEventListener("load", () => {
@@ -50,7 +53,7 @@ window.addEventListener("load", () => {
 async function main() {
   // 1. face-api 模型
   if (!window.faceapi) {
-    console.error("faceapi 沒載到，請檢查 index.html 的 script 標籤");
+    console.error("faceapi 沒載到，請檢查 camera.html 的 script 標籤");
     return;
   }
 
@@ -64,7 +67,13 @@ async function main() {
   modelsReady = true;
   console.log("[init] face-api 模型載入完成");
 
-  // 2. Supabase 只抓一次資料（這裡才會打資料庫）
+  // 設定偵測器參數（在模型載入完成後設定）
+  detectorOptions = new faceapi.TinyFaceDetectorOptions({
+    inputSize: 320,      // 解析度：224/320/416，越高越準但越慢
+    scoreThreshold: 0.4, // 越低會抓到更多臉
+  });
+
+  // 2. Supabase 只抓一次資料
   await loadUserCache();
 
   // 3. 相機
@@ -180,7 +189,7 @@ function setupFaceMesh() {
 
 // ---------------- FaceMesh callback：每幀更新頭部位置 + 定期觸發辨識 ----------------
 async function onResults(results) {
-  // 1. 畫面清掉（如果有要畫 landmark 可以在這裡畫）
+  // 1. 清除 canvas（如果有要畫 landmark，可以在這裡畫）
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
@@ -190,10 +199,10 @@ async function onResults(results) {
     return;
   }
 
-  // 把最新的 landmarks 存起來，給辨識 / 給名牌定位用
+  // 把最新的 landmarks 存起來，給辨識 / 名牌定位用
   lastFaceLandmarks = results.multiFaceLandmarks;
 
-  // 2. 每幀根據 FaceMesh 更新名牌位置（高 FPS）
+  // 2. 每幀根據 FaceMesh 更新名牌位置（高 FPS、平滑）
   updateTagPositionsFromMesh();
 
   // 3. 每 1 秒跑一次 face-api 做身份辨識（低頻率）
@@ -204,19 +213,20 @@ async function onResults(results) {
   }
 }
 
-// ---------------- 依照 FaceMesh landmark 更新名牌位置（每幀呼叫） ----------------
+// ---------------- 依照 FaceMesh landmark 更新名牌位置（每幀呼叫，含平滑） ----------------
 function updateTagPositionsFromMesh() {
   if (!lastFaceLandmarks || trackedFaces.length === 0) {
     clearAllUserTags();
     return;
   }
+  if (!tagLayer) return;
 
-  const rect = video.getBoundingClientRect();
+  const rect = tagLayer.getBoundingClientRect();
   const W = rect.width;
   const H = rect.height;
 
-  // 先清空，再依目前 trackedFaces 重建名牌
-  clearAllUserTags();
+  // 記錄這一幀有出現的 tag key，等一下用來刪掉消失的人
+  const activeKeys = new Set();
 
   for (const tf of trackedFaces) {
     const meshIndex = tf.meshIndex;
@@ -229,10 +239,50 @@ function updateTagPositionsFromMesh() {
     const chin = lm[152];
 
     const headHeight = (chin.y - forehead.y) * H;
-    const screenX = rect.left + forehead.x * W;
-    const screenY = rect.top + forehead.y * H - headHeight * 0.8;
+    const targetX = forehead.x * W;
+    const targetY = forehead.y * H - headHeight * 0.8;
 
-    createUserTag(user, screenX, screenY);
+    // 用 user.id 當 key（也可以用 `${user.id}-${meshIndex}`）
+    const key = String(user.id);
+    activeKeys.add(key);
+
+    let state = tagStates.get(key);
+
+    // 第一次看到這個人：建立名牌，起始位置直接放在 target
+    if (!state) {
+      const el = document.createElement("div");
+      el.className = "user-tag";
+      el.innerHTML = `
+        <div class="name">${user.name || ""}</div>
+        <div class="nickname">${user.nickname ? "@" + user.nickname : ""}</div>
+      `;
+      tagLayer.appendChild(el);
+
+      state = {
+        el,
+        x: targetX,
+        y: targetY,
+      };
+      tagStates.set(key, state);
+    } else {
+      // 已存在：做平滑移動（lerp）
+      state.x = state.x + (targetX - state.x) * SMOOTHING;
+      state.y = state.y + (targetY - state.y) * SMOOTHING;
+    }
+
+    // 套用樣式
+    state.el.style.left = `${state.x}px`;
+    state.el.style.top = `${state.y}px`;
+  }
+
+  // 把這一幀沒出現的 tag 移除（人走掉了）
+  for (const [key, state] of tagStates.entries()) {
+    if (!activeKeys.has(key)) {
+      if (state.el && state.el.parentNode === tagLayer) {
+        tagLayer.removeChild(state.el);
+      }
+      tagStates.delete(key);
+    }
   }
 }
 
@@ -245,6 +295,14 @@ async function recognizeFacesLocalMulti() {
   if (!lastFaceLandmarks || !lastFaceLandmarks.length) {
     console.warn("[recognize] 沒有 FaceMesh 資料，略過辨識");
     return;
+  }
+
+  if (!detectorOptions) {
+    // 理論上 main() 會設定好，這裡只是保險
+    detectorOptions = new faceapi.TinyFaceDetectorOptions({
+      inputSize: 320,
+      scoreThreshold: 0.4,
+    });
   }
 
   const detections = await faceapi
@@ -269,7 +327,7 @@ async function recognizeFacesLocalMulti() {
     return { cx: f.x, cy: f.y }; // 已經是 0~1 normalized
   });
 
-  const THRESHOLD = 0.75; // 你可以再微調
+  const THRESHOLD = 0.75; // 可以依實測再調整
 
   const newTracked = [];
 
@@ -333,20 +391,5 @@ async function recognizeFacesLocalMulti() {
 function clearAllUserTags() {
   if (!tagLayer) return;
   tagLayer.innerHTML = "";
-}
-
-function createUserTag(user, screenX, screenY) {
-  if (!tagLayer) return;
-
-  const tag = document.createElement("div");
-  tag.className = "user-tag";
-  tag.style.left = `${screenX}px`;
-  tag.style.top = `${screenY}px`;
-
-  tag.innerHTML = `
-    <div class="name">${user.name || ""}</div>
-    <div class="nickname">${user.nickname ? "@" + user.nickname : ""}</div>
-  `;
-
-  tagLayer.appendChild(tag);
+  tagStates.clear();
 }
