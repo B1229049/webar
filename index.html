@@ -1,25 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <style>
-        body {
-            background-color: rgb(22, 21, 21);
-            color: white;
-        }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WebAR Homepage</title>
 
-        a {
-            color: rgb(54, 155, 243);
-            right: 50%;
-            top: 50%;
-            font-size: larger;
-        }
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        background: linear-gradient(135deg, #141414, #1f1f1f, #111);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: "Segoe UI", sans-serif;
+        color: white;
+    }
 
-    </style>
+    .container {
+        text-align: center;
+        animation: fadeIn 1.2s ease;
+    }
+
+    h1 {
+        margin-bottom: 30px;
+        font-size: 2.2rem;
+        letter-spacing: 1px;
+        color: #4db8ff;
+        text-shadow: 0px 0px 10px #3da8ff;
+    }
+
+    a {
+        display: block;
+        width: 220px;
+        margin: 12px auto;
+        padding: 15px 0;
+        text-decoration: none;
+        color: white;
+        background: #2a2a2a;
+        border-radius: 8px;
+        font-size: 1.2rem;
+        transition: 0.25s;
+        border: 1px solid #4db8ff;
+    }
+
+    a:hover {
+        background: #4db8ff;
+        color: black;
+        transform: translateY(-3px);
+        box-shadow: 0 0 12px #4db8ff;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
 </head>
 <body>
-    <a href="webar-frontend/camera.html">camera test</a>
-    </br>
-    <a href="webar-frontend/register.html">register</a>
-    <p>美觀4</p>
+
+<div class="container">
+    <h1>Web AR Project</h1>
+
+    <a href="webar-frontend/camera.html">📷 Camera Test</a>
+    <a href="webar-frontend/register.html">📝 Register</a>
+</div>
+
 </body>
 </html>
