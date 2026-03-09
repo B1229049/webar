@@ -1,13 +1,11 @@
-// 一定要在最上面：ESM 方式載入 Supabase
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// ★★★ 改成你的 Supabase 設定（anon key）★★★
 const SUPABASE_URL = "https://msuhvjhznkodpjfjpaia.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zdWh2amh6bmtvZHBqZmpwYWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MzEwMTMsImV4cCI6MjA4MDQwNzAxM30.32jirKcLxE-sF3ICPD_yitBsO42JorbUgahz_1RAqoY";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// DOM 取得
+// DOM
 const step1 = document.getElementById("step1");
 const step2 = document.getElementById("step2");
 const stepLabel1 = document.getElementById("stepLabel1");
@@ -36,8 +34,9 @@ let currentMode = "idle"; // idle | preview | captured
 let cameraStream = null;
 let capturedImage = null;
 let modelsReady = false;
+let backendReady = false;
 
-// ---------------- Toast 小工具 ----------------
+// Toast
 function showToast(msg, duration = 2500) {
   toastEl.textContent = msg;
   toastEl.style.opacity = "1";
@@ -47,7 +46,7 @@ function showToast(msg, duration = 2500) {
   }, duration);
 }
 
-// ---------------- Step 切換 ----------------
+// Step 切換
 function goStep1() {
   step1.style.display = "block";
   step2.style.display = "none";
@@ -63,7 +62,6 @@ function goStep2() {
   stepLabel2.classList.add("step-active");
 }
 
-// 按「下一步：拍攝照片」
 goStep2Btn.addEventListener("click", () => {
   const name = nameInput.value.trim();
   if (!name) {
@@ -73,14 +71,13 @@ goStep2Btn.addEventListener("click", () => {
   goStep2();
 });
 
-// 按「返回上一步」
 backStep1Btn.addEventListener("click", () => {
   goStep1();
 });
 
-// ---------------- 相機控制 ----------------
+// 相機控制
 async function startCamera() {
-  if (cameraStream) return; // 已啟動就不用再開
+  if (cameraStream) return;
 
   try {
     cameraStream = await navigator.mediaDevices.getUserMedia({
@@ -88,6 +85,13 @@ async function startCamera() {
       audio: false,
     });
     regVideo.srcObject = cameraStream;
+
+    await new Promise((resolve) => {
+      regVideo.onloadedmetadata = () => {
+        regVideo.play().catch(() => {});
+        resolve();
+      };
+    });
   } catch (err) {
     console.error("無法開啟相機", err);
     showToast("無法開啟相機，請檢查權限");
@@ -100,7 +104,7 @@ function stopCamera() {
     cameraStream = null;
     regVideo.srcObject = null;
   }
-  // 回到「尚未拍照」的樣子
+
   regVideo.style.display = "none";
   previewCanvas.style.display = "none";
   placeholder.style.display = "flex";
@@ -108,8 +112,55 @@ function stopCamera() {
   capturedImage = null;
 }
 
-// ---------------- face-api 模型載入 ----------------
+// face-api 模型
 const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
+
+async function initTfBackend() {
+  try {
+    if (!window.faceapi || !faceapi.tf) {
+      throw new Error("faceapi 或 tf 尚未載入");
+    }
+
+    const tf = faceapi.tf;
+
+    if (tf.wasm && typeof tf.wasm.setWasmPaths === "function") {
+      const wasmBase = new URL("./", import.meta.url).href;
+      console.log("[register] WASM 路徑 =", wasmBase);
+      tf.wasm.setWasmPaths(wasmBase);
+    }
+
+    try {
+      console.log("[register] 嘗試 backend = wasm");
+      await tf.setBackend("wasm");
+      await tf.ready();
+      console.log("[register] 目前 backend =", tf.getBackend());
+
+      if (tf.getBackend() === "wasm") {
+        return true;
+      }
+    } catch (e) {
+      console.warn("[register] wasm 初始化失敗：", e);
+    }
+
+    try {
+      console.log("[register] 回退 backend = cpu");
+      await tf.setBackend("cpu");
+      await tf.ready();
+      console.log("[register] 目前 backend =", tf.getBackend());
+
+      if (tf.getBackend() === "cpu") {
+        return true;
+      }
+    } catch (e) {
+      console.error("[register] cpu 初始化失敗：", e);
+    }
+
+    return false;
+  } catch (e) {
+    console.error("[register] backend 初始化總失敗：", e);
+    return false;
+  }
+}
 
 async function loadFaceApiModels() {
   await Promise.all([
@@ -118,25 +169,33 @@ async function loadFaceApiModels() {
     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
   ]);
   modelsReady = true;
-  console.log("face-api 模型載入完成");
+  console.log("[register] face-api 模型載入完成");
   showToast("臉部模型已載入，可以拍照或上傳照片");
 }
 
-window.addEventListener("load", () => {
-  if (!window.faceapi) {
-    console.error("faceapi 未載入，請確認 HTML 中有 face-api script");
-    showToast("臉部模組載入失敗");
-    return;
-  }
-  loadFaceApiModels().catch((e) => {
+window.addEventListener("load", async () => {
+  try {
+    if (!window.faceapi) {
+      console.error("faceapi 未載入，請確認 HTML 中有 face-api script");
+      showToast("臉部模組載入失敗");
+      return;
+    }
+
+    backendReady = await initTfBackend();
+    if (!backendReady) {
+      showToast("TFJS backend 初始化失敗");
+      return;
+    }
+
+    await loadFaceApiModels();
+  } catch (e) {
     console.error(e);
     showToast("臉部模組載入失敗");
-  });
+  }
 });
 
-// ---------------- 拍一張照片（同一框切換） ----------------
+// 拍照
 takePhotoBtn.addEventListener("click", async () => {
-  // 狀態 1：idle → 啟動鏡頭 + 顯示預覽
   if (currentMode === "idle") {
     await startCamera();
     if (!cameraStream) return;
@@ -150,7 +209,6 @@ takePhotoBtn.addEventListener("click", async () => {
     return;
   }
 
-  // 狀態 2：preview → 截圖到 canvas
   if (currentMode === "preview") {
     if (!regVideo.videoWidth || !regVideo.videoHeight) {
       showToast("鏡頭準備中，請再按一次");
@@ -171,7 +229,6 @@ takePhotoBtn.addEventListener("click", async () => {
     return;
   }
 
-  // 狀態 3：captured → 再按 → 回到鏡頭預覽（重新拍攝）
   if (currentMode === "captured") {
     await startCamera();
     if (!cameraStream) return;
@@ -181,18 +238,17 @@ takePhotoBtn.addEventListener("click", async () => {
 
     currentMode = "preview";
     showToast("重新拍攝模式");
-    return;
   }
 });
 
-// ---------------- 上傳照片（同一框顯示） ----------------
+// 上傳照片
 uploadPhoto.addEventListener("change", () => {
   const file = uploadPhoto.files[0];
   if (!file) return;
 
   const img = new Image();
   img.onload = () => {
-    stopCamera(); // 關鏡頭並重置到 idle，但下面會再改成 captured 顯示
+    stopCamera();
 
     placeholder.style.display = "none";
     regVideo.style.display = "none";
@@ -210,7 +266,7 @@ uploadPhoto.addEventListener("change", () => {
   img.src = URL.createObjectURL(file);
 });
 
-// ---------------- 註冊：寫入 Supabase ----------------
+// 註冊
 registerBtn.addEventListener("click", async () => {
   const name = nameInput.value.trim();
   const nickname = nicknameInput.value.trim();
@@ -228,6 +284,11 @@ registerBtn.addEventListener("click", async () => {
     return;
   }
 
+  if (!backendReady) {
+    showToast("TFJS backend 尚未初始化完成");
+    return;
+  }
+
   if (!modelsReady) {
     showToast("臉部模型尚未載入完成，請稍候");
     return;
@@ -237,11 +298,10 @@ registerBtn.addEventListener("click", async () => {
   registerBtn.textContent = "註冊中…";
 
   try {
-    // 1. 由 capturedImage 提取 embedding
     const detection = await faceapi
       .detectSingleFace(
         capturedImage,
-        new faceapi.TinyFaceDetectorOptions()
+        new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 })
       )
       .withFaceLandmarks()
       .withFaceDescriptor();
@@ -255,7 +315,6 @@ registerBtn.addEventListener("click", async () => {
 
     const embedding = Array.from(detection.descriptor);
 
-    // 2. 寫入 Supabase
     const { data, error } = await supabase
       .from("users")
       .insert([
