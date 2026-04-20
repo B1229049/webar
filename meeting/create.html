@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>創建會議 | Web AR Project</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a2a6c, #3b3dbf, #6a11cb, #2575fc);
+      background-size: 300% 300%;
+      animation: gradientFlow 12s ease infinite;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: "Segoe UI", sans-serif;
+      color: white;
+      padding: 24px;
+    }
+
+    @keyframes gradientFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel {
+      width: 100%;
+      max-width: 520px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 22px;
+      backdrop-filter: blur(12px);
+      padding: 30px 26px;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+      animation: fadeIn 0.9s ease;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 2rem;
+      letter-spacing: 1px;
+      color: #dbe9ff;
+      text-shadow: 0 0 15px rgba(200, 230, 255, 0.5);
+      text-align: center;
+    }
+
+    .subtitle {
+      margin: 0 0 28px;
+      text-align: center;
+      color: rgba(255,255,255,0.88);
+      line-height: 1.6;
+      font-size: 0.98rem;
+    }
+
+    .field {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.96rem;
+      color: #eef5ff;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px 15px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.28);
+      background: rgba(255,255,255,0.10);
+      color: white;
+      font-size: 1rem;
+      outline: none;
+      transition: 0.25s;
+    }
+
+    input::placeholder {
+      color: rgba(255,255,255,0.62);
+    }
+
+    input:focus {
+      border-color: rgba(255,255,255,0.7);
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.12);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 12px;
+    }
+
+    button, .link-btn {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.08);
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.25s;
+      backdrop-filter: blur(6px);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button:hover, .link-btn:hover {
+      background: rgba(255,255,255,0.92);
+      color: #222;
+      transform: translateY(-3px);
+      box-shadow: 0 0 15px rgba(255,255,255,0.45);
+    }
+
+    .primary {
+      margin-top: 10px;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .result {
+      margin-top: 24px;
+      padding: 18px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.20);
+      display: none;
+    }
+
+    .result.show {
+      display: block;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .result h2 {
+      margin: 0 0 10px;
+      font-size: 1.15rem;
+      color: #eef5ff;
+    }
+
+    .meeting-code {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      margin: 8px 0 12px;
+      color: #ffffff;
+      word-break: break-word;
+    }
+
+    .result p {
+      margin: 6px 0;
+      color: rgba(255,255,255,0.92);
+      line-height: 1.55;
+    }
+
+    .meeting-link {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.16);
+      font-size: 0.95rem;
+      word-break: break-all;
+    }
+
+    .hint {
+      margin-top: 16px;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.6;
+    }
+
+    .top-link {
+      margin-top: 18px;
+    }
+
+    @media (max-width: 560px) {
+      .panel { padding: 24px 18px; }
+      .row, .actions { grid-template-columns: 1fr; }
+      h1 { font-size: 1.7rem; }
+      .meeting-code { font-size: 1.45rem; letter-spacing: 2px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>📅 創建會議</h1>
+    <p class="subtitle">建立一個新的會議房間，產生專屬會議代碼與加入連結，方便其他人快速加入。</p>
+
+    <div class="field">
+      <label for="hostName">主持人名稱</label>
+      <input id="hostName" type="text" placeholder="例如：Simon" />
+    </div>
+
+    <div class="field">
+      <label for="meetingTitle">會議名稱</label>
+      <input id="meetingTitle" type="text" placeholder="例如：WebAR 專案討論" />
+    </div>
+
+    <div class="field">
+      <label for="meetingCode">會議代碼</label>
+      <div class="row">
+        <input id="meetingCode" type="text" placeholder="點右側按鈕自動產生" readonly />
+        <button type="button" id="generateBtn">產生代碼</button>
+      </div>
+    </div>
+
+    <button class="primary" type="button" id="createBtn">✅ 建立會議</button>
+
+    <div class="actions">
+      <button type="button" id="copyBtn">📋 複製加入連結</button>
+      <a class="link-btn" href="index.html">⬅ 返回首頁</a>
+    </div>
+
+    <div id="resultCard" class="result">
+      <h2>會議建立成功</h2>
+      <div id="resultCode" class="meeting-code">------</div>
+      <p id="resultTitle">會議名稱：未設定</p>
+      <p id="resultHost">主持人：未設定</p>
+      <div id="resultLink" class="meeting-link"></div>
+    </div>
+
+    <p class="hint">目前這是前端版本，適合展示與原型開發。之後若要真的多人同步加入，可以再串接資料庫、WebRTC 或即時後端服務。</p>
+  </div>
+
+  <script type="module" src="./create.js"></script>
+  <script>
+    
+  </script>
+</body>
+</html>
