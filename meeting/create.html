@@ -3,246 +3,451 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>創建會議 | Web AR Project</title>
+  <title>建立房間 | AR Vision Link</title>
   <style>
-    * { box-sizing: border-box; }
+    :root {
+      --bg-1: #f7f4fb;
+      --card: rgba(255, 255, 255, 0.92);
+      --card-border: rgba(120, 76, 132, 0.12);
+      --text-main: #24192c;
+      --text-sub: #6f5b78;
+      --primary: #c99ab8;
+      --primary-deep: #b27ea0;
+      --line: #ead9e3;
+      --shadow: 0 18px 50px rgba(84, 53, 79, 0.12);
+      --success-bg: #eefaf4;
+      --success-text: #17754d;
+      --success-border: #bfe7cf;
+      --error-bg: #fff1f1;
+      --error-text: #bc3f3f;
+      --error-border: #f0c3c3;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: "Noto Sans TC", Arial, sans-serif;
+      color: var(--text-main);
+      background:
+        radial-gradient(circle at top left, #fff7fb 0%, #f8f2f8 28%, #f4f0f7 55%, #f7f5fb 100%);
+      min-height: 100%;
+    }
 
     body {
-      margin: 0;
       min-height: 100vh;
-      background: linear-gradient(135deg, #1a2a6c, #3b3dbf, #6a11cb, #2575fc);
-      background-size: 300% 300%;
-      animation: gradientFlow 12s ease infinite;
+    }
+
+    .page {
+      min-height: 100vh;
       display: flex;
-      justify-content: center;
       align-items: center;
-      font-family: "Segoe UI", sans-serif;
-      color: white;
-      padding: 24px;
+      justify-content: center;
+      padding: 28px;
     }
 
-    @keyframes gradientFlow {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+    .shell {
+      width: 100%;
+      max-width: 1080px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 28px;
+      align-items: stretch;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    .hero,
+    .panel {
+      border-radius: 28px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero {
+      padding: 42px 38px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 640px;
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--text-sub);
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 22px;
+    }
+
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 0 6px rgba(201,154,184,0.16);
+    }
+
+    .hero-title {
+      font-size: clamp(34px, 5vw, 54px);
+      line-height: 1.08;
+      margin: 0 0 16px;
+      font-weight: 900;
+    }
+
+    .hero-desc {
+      margin: 0;
+      max-width: 560px;
+      font-size: 16px;
+      line-height: 1.85;
+      color: var(--text-sub);
+    }
+
+    .hero-grid {
+      margin-top: 34px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: rgba(255,255,255,0.78);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .feature-title {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .feature-text {
+      margin: 0;
+      color: var(--text-sub);
+      line-height: 1.75;
+      font-size: 14px;
+    }
+
+    .hero-footer {
+      margin-top: 28px;
+      padding: 18px 20px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #f8e8f0 0%, #f4eef9 100%);
+      border: 1px solid var(--line);
+      color: #5c4565;
+      font-size: 14px;
+      line-height: 1.75;
     }
 
     .panel {
-      width: 100%;
-      max-width: 520px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 22px;
-      backdrop-filter: blur(12px);
-      padding: 30px 26px;
-      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
-      animation: fadeIn 0.9s ease;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 640px;
     }
 
-    h1 {
-      margin: 0 0 10px;
-      font-size: 2rem;
-      letter-spacing: 1px;
-      color: #dbe9ff;
-      text-shadow: 0 0 15px rgba(200, 230, 255, 0.5);
-      text-align: center;
+    .panel-title {
+      margin: 0 0 8px;
+      font-size: 30px;
+      font-weight: 900;
     }
 
-    .subtitle {
-      margin: 0 0 28px;
-      text-align: center;
-      color: rgba(255,255,255,0.88);
-      line-height: 1.6;
-      font-size: 0.98rem;
+    .panel-subtitle {
+      margin: 0 0 24px;
+      color: var(--text-sub);
+      line-height: 1.7;
+      font-size: 15px;
     }
 
     .field {
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
 
-    label {
+    .field label {
       display: block;
-      margin-bottom: 8px;
-      font-size: 0.96rem;
-      color: #eef5ff;
+      margin-bottom: 10px;
+      font-weight: 800;
+      font-size: 14px;
     }
 
-    input {
+    .field input {
       width: 100%;
-      padding: 14px 15px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.28);
-      background: rgba(255,255,255,0.10);
-      color: white;
-      font-size: 1rem;
+      border: 1px solid #dec7d4;
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px 18px;
+      font-size: 16px;
+      color: var(--text-main);
       outline: none;
-      transition: 0.25s;
+      transition: 0.2s ease;
     }
 
-    input::placeholder {
-      color: rgba(255,255,255,0.62);
+    .field input:focus {
+      border-color: var(--primary-deep);
+      box-shadow: 0 0 0 5px rgba(201,154,184,0.18);
     }
 
-    input:focus {
-      border-color: rgba(255,255,255,0.7);
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.12);
-    }
-
-    .row {
+    .code-row {
       display: grid;
-      grid-template-columns: 1fr 140px;
+      grid-template-columns: 1fr auto;
       gap: 12px;
-    }
-
-    button, .link-btn {
-      width: 100%;
-      padding: 14px 16px;
-      border: 1px solid rgba(255,255,255,0.35);
-      border-radius: 12px;
-      background: rgba(255,255,255,0.08);
-      color: white;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: 0.25s;
-      backdrop-filter: blur(6px);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    button:hover, .link-btn:hover {
-      background: rgba(255,255,255,0.92);
-      color: #222;
-      transform: translateY(-3px);
-      box-shadow: 0 0 15px rgba(255,255,255,0.45);
-    }
-
-    .primary {
-      margin-top: 10px;
-      font-size: 1.05rem;
-      font-weight: 600;
+      align-items: end;
     }
 
     .actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
       gap: 12px;
-      margin-top: 14px;
+      margin-top: 8px;
     }
 
-    .result {
-      margin-top: 24px;
-      padding: 18px;
+    button {
+      appearance: none;
+      border: none;
       border-radius: 16px;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.20);
+      padding: 15px 20px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-deep) 100%);
+      color: white;
+      box-shadow: 0 12px 24px rgba(178,126,160,0.22);
+    }
+
+    .btn-secondary {
+      background: #f5edf2;
+      color: #6a5362;
+      border: 1px solid #e7d6e0;
+    }
+
+    .btn-block {
+      width: 100%;
+    }
+
+    .result-card {
+      margin-top: 20px;
+      background: linear-gradient(180deg, #fff 0%, #fdf8fb 100%);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
       display: none;
     }
 
-    .result.show {
+    .result-card.show {
       display: block;
-      animation: fadeIn 0.4s ease;
     }
 
-    .result h2 {
-      margin: 0 0 10px;
-      font-size: 1.15rem;
-      color: #eef5ff;
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--line);
     }
 
-    .meeting-code {
-      font-size: 1.8rem;
-      font-weight: 700;
-      letter-spacing: 3px;
-      margin: 8px 0 12px;
-      color: #ffffff;
+    .result-row:last-child {
+      border-bottom: none;
+    }
+
+    .result-label {
+      color: var(--text-sub);
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .result-value {
+      text-align: right;
+      font-weight: 800;
       word-break: break-word;
     }
 
-    .result p {
-      margin: 6px 0;
-      color: rgba(255,255,255,0.92);
-      line-height: 1.55;
+    .result-link {
+      color: var(--primary-deep);
     }
 
-    .meeting-link {
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: 12px;
-      background: rgba(0,0,0,0.16);
-      font-size: 0.95rem;
-      word-break: break-all;
-    }
-
-    .hint {
-      margin-top: 16px;
-      font-size: 0.9rem;
-      color: rgba(255,255,255,0.78);
-      line-height: 1.6;
-    }
-
-    .top-link {
+    .footnote {
       margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px dashed var(--line);
+      color: var(--text-sub);
+      font-size: 13px;
+      line-height: 1.75;
     }
 
-    @media (max-width: 560px) {
-      .panel { padding: 24px 18px; }
-      .row, .actions { grid-template-columns: 1fr; }
-      h1 { font-size: 1.7rem; }
-      .meeting-code { font-size: 1.45rem; letter-spacing: 2px; }
+    @media (max-width: 980px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .panel {
+        min-height: auto;
+      }
+
+      .hero {
+        padding: 34px 28px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding: 16px;
+      }
+
+      .hero,
+      .panel {
+        border-radius: 22px;
+      }
+
+      .panel {
+        padding: 22px;
+      }
+
+      .hero-title {
+        font-size: 34px;
+      }
+
+      .panel-title {
+        font-size: 26px;
+      }
+
+      .code-row,
+      .actions {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+      }
+
+      .result-row {
+        flex-direction: column;
+      }
+
+      .result-value {
+        text-align: left;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="panel">
-    <h1>📅 創建會議</h1>
-    <p class="subtitle">建立一個新的會議房間，產生專屬會議代碼與加入連結，方便其他人快速加入。</p>
+  <div class="page">
+    <div class="shell">
+      <section class="hero">
+        <div>
+          <div class="brand-badge">
+            <span class="brand-dot"></span>
+            AR Vision Link
+          </div>
 
-    <div class="field">
-      <label for="hostName">主持人名稱</label>
-      <input id="hostName" type="text" placeholder="例如：Simon" />
+          <h1 class="hero-title">Create the Room<br />建立互動房間</h1>
+          <p class="hero-desc">
+            建立新的房間碼與加入連結，讓其他人能快速進入同一場活動。
+            因為 create.html 與 join.html 放在同一個資料夾下，所以連結會直接指向同路徑的 join.html。
+          </p>
+
+          <div class="hero-grid">
+            <div class="feature-card">
+              <h3 class="feature-title">快速建立</h3>
+              <p class="feature-text">輸入主持人與活動名稱後，就能立即建立房間與加入連結。</p>
+            </div>
+
+            <div class="feature-card">
+              <h3 class="feature-title">同路徑連結</h3>
+              <p class="feature-text">建立後的加入網址會直接使用 ./join.html?room=房號，不會跳錯目錄。</p>
+            </div>
+
+            <div class="feature-card">
+              <h3 class="feature-title">方便擴充</h3>
+              <p class="feature-text">後續可再接上 Render、Supabase、WebSocket、排行榜與 AR 顯示。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-footer">
+          提示：如果 create.html 和 join.html 在同一層資料夾，連結就應直接指向 join.html。
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">建立房間</h2>
+        <p class="panel-subtitle">
+          建立成功後，系統會顯示房間碼與加入連結。
+        </p>
+
+        <div class="field">
+          <label for="hostName">主持人名稱</label>
+          <input id="hostName" type="text" placeholder="請輸入主持人名稱" maxlength="50" />
+        </div>
+
+        <div class="field">
+          <label for="meetingTitle">活動名稱</label>
+          <input id="meetingTitle" type="text" placeholder="請輸入活動名稱" maxlength="100" />
+        </div>
+
+        <div class="field">
+          <label for="meetingCode">房間代碼</label>
+          <div class="code-row">
+            <input id="meetingCode" type="text" placeholder="系統自動產生" maxlength="20" />
+            <button id="generateBtn" class="btn-secondary" type="button">產生代碼</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="createBtn" class="btn-primary btn-block" type="button">建立房間</button>
+          <button id="copyBtn" class="btn-secondary" type="button">複製加入連結</button>
+        </div>
+
+        <div id="resultCard" class="result-card">
+          <div class="result-row">
+            <div class="result-label">房間代碼</div>
+            <div class="result-value" id="resultCode">-</div>
+          </div>
+          <div class="result-row">
+            <div class="result-label">活動名稱</div>
+            <div class="result-value" id="resultTitle">-</div>
+          </div>
+          <div class="result-row">
+            <div class="result-label">主持人</div>
+            <div class="result-value" id="resultHost">-</div>
+          </div>
+          <div class="result-row">
+            <div class="result-label">加入連結</div>
+            <div class="result-value result-link" id="resultLink">-</div>
+          </div>
+        </div>
+
+        <div class="footnote">
+          這一版適用於 create.html 與 join.html 放在同一路徑下。<br />
+          若之後改資料夾結構，再一起調整連結組法即可。
+        </div>
+      </section>
     </div>
-
-    <div class="field">
-      <label for="meetingTitle">會議名稱</label>
-      <input id="meetingTitle" type="text" placeholder="例如：WebAR 專案討論" />
-    </div>
-
-    <div class="field">
-      <label for="meetingCode">會議代碼</label>
-      <div class="row">
-        <input id="meetingCode" type="text" placeholder="點右側按鈕自動產生" readonly />
-        <button type="button" id="generateBtn">產生代碼</button>
-      </div>
-    </div>
-
-    <button class="primary" type="button" id="createBtn">✅ 建立會議</button>
-
-    <div class="actions">
-      <button type="button" id="copyBtn">📋 複製加入連結</button>
-      <a class="link-btn" href="./index.html">⬅ 返回首頁</a>
-    </div>
-
-    <div id="resultCard" class="result">
-      <h2>會議建立成功</h2>
-      <div id="resultCode" class="meeting-code">------</div>
-      <p id="resultTitle">會議名稱：未設定</p>
-      <p id="resultHost">主持人：未設定</p>
-      <div id="resultLink" class="meeting-link"></div>
-    </div>
-
-    <p class="hint">目前這是前端版本，適合展示與原型開發。之後若要真的多人同步加入，可以再串接資料庫、WebRTC 或即時後端服務。</p>
   </div>
 
-  <script type="module" src="./create.js"></script>
-  <script>
-    
-  </script>
+  <script src="./create.js"></script>
 </body>
 </html>

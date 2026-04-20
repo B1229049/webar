@@ -21,20 +21,21 @@ function generateMeetingCode(length = 8) {
   return code;
 }
 
+// create.html 與 join.html 在同一路徑
 function buildMeetingLink(code) {
   const base =
     window.location.origin && window.location.origin !== "null"
       ? window.location.origin + window.location.pathname.replace(/[^/]*$/, "")
       : "./";
 
-  return `${base}join-meeting.html?room=${encodeURIComponent(code)}`;
+  return `${base}join.html?room=${encodeURIComponent(code)}`;
 }
 
 function ensureCode() {
   if (!meetingCodeInput.value.trim()) {
     meetingCodeInput.value = generateMeetingCode();
   }
-  return meetingCodeInput.value.trim();
+  return meetingCodeInput.value.trim().toUpperCase();
 }
 
 function setLoading(isLoading) {
@@ -60,13 +61,6 @@ createBtn.addEventListener("click", async () => {
     return;
   }
 
-  const payload = {
-    hostName,
-    meetingTitle,
-    meetingCode,
-    meetingLink
-  };
-
   try {
     setLoading(true);
 
@@ -75,7 +69,12 @@ createBtn.addEventListener("click", async () => {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        hostName,
+        meetingTitle,
+        meetingCode,
+        meetingLink
+      })
     });
 
     const result = await response.json();
@@ -89,13 +88,13 @@ createBtn.addEventListener("click", async () => {
     localStorage.setItem("latestMeeting", JSON.stringify(room));
 
     resultCode.textContent = room.meetingCode;
-    resultTitle.textContent = `會議名稱：${room.meetingTitle}`;
-    resultHost.textContent = `主持人：${room.hostName}`;
+    resultTitle.textContent = room.meetingTitle;
+    resultHost.textContent = room.hostName;
     resultLink.textContent = meetingLink;
     resultCard.classList.add("show");
   } catch (error) {
     console.error(error);
-    alert("建立房間失敗： " + error.message);
+    alert("建立房間失敗：" + error.message);
   } finally {
     setLoading(false);
   }

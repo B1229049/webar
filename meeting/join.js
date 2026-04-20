@@ -1,5 +1,7 @@
 const API_BASE = "https://ar-vision-link.onrender.com";
 
+const roomCodeInput = document.getElementById("roomCodeInput");
+const searchBtn = document.getElementById("searchBtn");
 const roomCodeText = document.getElementById("roomCodeText");
 const quizTitleText = document.getElementById("quizTitleText");
 const startedAtText = document.getElementById("startedAtText");
@@ -14,6 +16,10 @@ let currentSession = null;
 function getRoomCodeFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return (params.get("room") || "").trim().toUpperCase();
+}
+
+function getCurrentRoomCode() {
+  return (roomCodeInput?.value || "").trim().toUpperCase();
 }
 
 function formatDateTime(value) {
@@ -35,26 +41,32 @@ function setStatus(type, message) {
   statusBox.textContent = message;
 }
 
-async function loadRoom() {
-  const roomCode = getRoomCodeFromUrl();
+function resetRoomDisplay() {
+  currentSession = null;
+  if (roomCodeText) roomCodeText.textContent = "尚未查詢";
+  if (quizTitleText) quizTitleText.textContent = "尚未查詢";
+  if (startedAtText) startedAtText.textContent = "尚未查詢";
+  if (joinForm) joinForm.classList.add("hidden");
+  if (joinBtn) joinBtn.disabled = true;
+}
 
-  if (!roomCode) {
-    if (roomCodeText) roomCodeText.textContent = "未提供";
-    if (quizTitleText) quizTitleText.textContent = "-";
-    if (startedAtText) startedAtText.textContent = "-";
-    setStatus("error", "網址缺少 room 參數，例如 join.html?room=ABCD1234");
-    if (joinBtn) joinBtn.disabled = true;
+async function loadRoom(roomCode) {
+  const code = (roomCode || "").trim().toUpperCase();
+
+  if (!code) {
+    resetRoomDisplay();
+    setStatus("error", "請先輸入房間代碼。");
     return;
   }
 
-  if (roomCodeText) roomCodeText.textContent = roomCode;
+  if (roomCodeInput) roomCodeInput.value = code;
+  if (roomCodeText) roomCodeText.textContent = code;
+  if (quizTitleText) quizTitleText.textContent = "查詢中...";
+  if (startedAtText) startedAtText.textContent = "查詢中...";
   setStatus("loading", "正在查詢房間資料...");
 
   try {
-    const response = await fetch(
-      `${API_BASE}/api/session/${encodeURIComponent(roomCode)}`
-    );
-
+    const response = await fetch(`${API_BASE}/api/session/${encodeURIComponent(code)}`);
     const result = await response.json();
 
     if (!response.ok) {
@@ -73,34 +85,44 @@ async function loadRoom() {
 
     setStatus("success", "房間存在，可以加入。");
 
-    if (joinForm) {
-      joinForm.classList.remove("hidden");
-    }
-
-    if (joinBtn) {
-      joinBtn.disabled = false;
-    }
+    if (joinForm) joinForm.classList.remove("hidden");
+    if (joinBtn) joinBtn.disabled = false;
   } catch (error) {
     console.error(error);
+    currentSession = null;
 
-    if (quizTitleText) quizTitleText.textContent = "-";
+    if (quizTitleText) quizTitleText.textContent = "找不到";
     if (startedAtText) startedAtText.textContent = "-";
 
     setStatus("error", "找不到此房間，請確認房間碼是否正確。");
 
-    if (joinBtn) {
-      joinBtn.disabled = true;
-    }
+    if (joinForm) joinForm.classList.add("hidden");
+    if (joinBtn) joinBtn.disabled = true;
   }
+}
+
+if (searchBtn) {
+  searchBtn.addEventListener("click", () => {
+    loadRoom(getCurrentRoomCode());
+  });
+}
+
+if (roomCodeInput) {
+  roomCodeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      loadRoom(getCurrentRoomCode());
+    }
+  });
 }
 
 if (joinBtn) {
   joinBtn.addEventListener("click", async () => {
-    const roomCode = getRoomCodeFromUrl();
+    const roomCode = getCurrentRoomCode();
     const playerName = playerNameInput?.value.trim() || "";
 
     if (!currentSession) {
-      alert("房間資料尚未載入完成");
+      alert("請先查詢有效房間");
       return;
     }
 
@@ -131,14 +153,11 @@ if (joinBtn) {
         throw new Error(result.error || "加入失敗");
       }
 
-      localStorage.setItem(
-        "currentJoinSession",
-        JSON.stringify(result.joinData)
-      );
+      localStorage.setItem("currentJoinSession", JSON.stringify(result.joinData));
 
       alert("加入成功");
 
-      // 之後可改成正式跳轉
+      // 可改成正式跳轉
       // window.location.href = `play.html?room=${encodeURIComponent(roomCode)}`;
     } catch (error) {
       console.error(error);
@@ -156,4 +175,12 @@ if (backBtn) {
   });
 }
 
-loadRoom();
+// 如果網址有 ?room=XXXX，自動帶入並查詢
+const initialRoomCode = getRoomCodeFromUrl();
+if (initialRoomCode && roomCodeInput) {
+  roomCodeInput.value = initialRoomCode;
+  loadRoom(initialRoomCode);
+} else {
+  resetRoomDisplay();
+  setStatus("loading", "請先輸入房間代碼並查詢。");
+}

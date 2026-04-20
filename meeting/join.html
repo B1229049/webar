@@ -7,14 +7,12 @@
   <style>
     :root {
       --bg-1: #f7f4fb;
-      --bg-2: #fefcff;
       --card: rgba(255, 255, 255, 0.92);
       --card-border: rgba(120, 76, 132, 0.12);
       --text-main: #24192c;
       --text-sub: #6f5b78;
       --primary: #c99ab8;
       --primary-deep: #b27ea0;
-      --primary-soft: #f4e5ee;
       --line: #ead9e3;
       --shadow: 0 18px 50px rgba(84, 53, 79, 0.12);
       --success-bg: #eefaf4;
@@ -74,36 +72,10 @@
 
     .hero {
       padding: 42px 38px;
-      position: relative;
-      overflow: hidden;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       min-height: 640px;
-    }
-
-    .hero::before {
-      content: "";
-      position: absolute;
-      right: -80px;
-      top: -80px;
-      width: 240px;
-      height: 240px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(201,154,184,0.28) 0%, rgba(201,154,184,0) 70%);
-      pointer-events: none;
-    }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      left: -100px;
-      bottom: -100px;
-      width: 280px;
-      height: 280px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(178,126,160,0.18) 0%, rgba(178,126,160,0) 70%);
-      pointer-events: none;
     }
 
     .brand-badge {
@@ -118,10 +90,7 @@
       color: var(--text-sub);
       font-size: 14px;
       font-weight: 700;
-      letter-spacing: 0.2px;
       margin-bottom: 22px;
-      position: relative;
-      z-index: 1;
     }
 
     .brand-dot {
@@ -137,9 +106,6 @@
       line-height: 1.08;
       margin: 0 0 16px;
       font-weight: 900;
-      letter-spacing: -0.03em;
-      position: relative;
-      z-index: 1;
     }
 
     .hero-desc {
@@ -148,23 +114,19 @@
       font-size: 16px;
       line-height: 1.85;
       color: var(--text-sub);
-      position: relative;
-      z-index: 1;
     }
 
     .hero-grid {
       margin-top: 34px;
       display: grid;
       gap: 16px;
-      position: relative;
-      z-index: 1;
     }
 
     .feature-card {
       background: rgba(255,255,255,0.78);
       border: 1px solid var(--line);
       border-radius: 20px;
-      padding: 18px 18px 16px;
+      padding: 18px;
     }
 
     .feature-title {
@@ -189,8 +151,6 @@
       color: #5c4565;
       font-size: 14px;
       line-height: 1.75;
-      position: relative;
-      z-index: 1;
     }
 
     .panel {
@@ -205,7 +165,6 @@
       margin: 0 0 8px;
       font-size: 30px;
       font-weight: 900;
-      letter-spacing: -0.02em;
     }
 
     .panel-subtitle {
@@ -213,6 +172,42 @@
       color: var(--text-sub);
       line-height: 1.7;
       font-size: 15px;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .field input {
+      width: 100%;
+      border: 1px solid #dec7d4;
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px 18px;
+      font-size: 16px;
+      color: var(--text-main);
+      outline: none;
+      transition: 0.2s ease;
+    }
+
+    .field input:focus {
+      border-color: var(--primary-deep);
+      box-shadow: 0 0 0 5px rgba(201,154,184,0.18);
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 18px;
     }
 
     .info-box {
@@ -235,10 +230,6 @@
     .info-row:last-child {
       border-bottom: none;
       padding-bottom: 0;
-    }
-
-    .info-row:first-child {
-      padding-top: 0;
     }
 
     .label {
@@ -294,38 +285,6 @@
       display: none;
     }
 
-    .field {
-      margin-bottom: 18px;
-    }
-
-    .field label {
-      display: block;
-      margin-bottom: 10px;
-      font-weight: 800;
-      font-size: 14px;
-    }
-
-    .field input {
-      width: 100%;
-      border: 1px solid #dec7d4;
-      background: #fff;
-      border-radius: 16px;
-      padding: 16px 18px;
-      font-size: 16px;
-      color: var(--text-main);
-      outline: none;
-      transition: 0.2s ease;
-    }
-
-    .field input::placeholder {
-      color: #a08896;
-    }
-
-    .field input:focus {
-      border-color: var(--primary-deep);
-      box-shadow: 0 0 0 5px rgba(201,154,184,0.18);
-    }
-
     .actions {
       display: flex;
       gap: 12px;
@@ -354,7 +313,6 @@
     }
 
     .btn-primary {
-      flex: 1;
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-deep) 100%);
       color: white;
       box-shadow: 0 12px 24px rgba(178,126,160,0.22);
@@ -364,6 +322,10 @@
       background: #f5edf2;
       color: #6a5362;
       border: 1px solid #e7d6e0;
+    }
+
+    .btn-block {
+      width: 100%;
     }
 
     .footnote {
@@ -412,17 +374,15 @@
         font-size: 26px;
       }
 
-      .info-row {
+      .info-row,
+      .input-row,
+      .actions {
+        grid-template-columns: 1fr;
         flex-direction: column;
-        align-items: flex-start;
       }
 
       .value {
         text-align: left;
-      }
-
-      .actions {
-        flex-direction: column;
       }
 
       .room-code {
@@ -443,64 +403,70 @@
 
           <h1 class="hero-title">Join the Room<br />立即加入互動場次</h1>
           <p class="hero-desc">
-            透過房間代碼快速加入目前的答題競賽與互動空間。
-            這個頁面會先驗證房間是否存在，再建立你的加入資訊，
-            讓後續的即時同步、排行榜與 Vision 模組可以順利串接。
+            你可以直接輸入房間代碼查詢，也可以用帶有 room 參數的連結自動帶入。
+            查到房間後，再輸入你的名稱即可加入。
           </p>
 
           <div class="hero-grid">
             <div class="feature-card">
-              <h3 class="feature-title">即時同步</h3>
-              <p class="feature-text">
-                進入後可接上 Render 與 Supabase，同步房間狀態、玩家資訊與遊戲流程。
-              </p>
+              <h3 class="feature-title">手動輸入房號</h3>
+              <p class="feature-text">不一定要靠 join.html?room=XXXX，現在可直接輸入房間代碼查詢。</p>
             </div>
 
             <div class="feature-card">
-              <h3 class="feature-title">多人互動</h3>
-              <p class="feature-text">
-                每位加入者會建立對應資料，方便後續成績紀錄、辨識連動與玩家管理。
-              </p>
+              <h3 class="feature-title">連結自動帶入</h3>
+              <p class="feature-text">若從建立頁複製的加入連結進來，系統也會自動查詢該房間。</p>
             </div>
 
             <div class="feature-card">
-              <h3 class="feature-title">AR Vision Link</h3>
-              <p class="feature-text">
-                後續可延伸至人臉辨識、標籤顯示、點名紀錄與互動競賽的完整流程。
-              </p>
+              <h3 class="feature-title">加入後可擴充</h3>
+              <p class="feature-text">後續可再接 WebSocket、排行榜、AR 顯示與人臉辨識流程。</p>
             </div>
           </div>
         </div>
 
         <div class="hero-footer">
-          提示：只要輸入正確的房間代碼與名稱，就能先完成加入驗證。
-          之後你可以再把這一頁銜接到 play.html 或即時答題頁面。
+          提示：先查房間，再輸入你的名稱並加入，流程會穩定很多。
         </div>
       </section>
 
       <section class="panel">
         <h2 class="panel-title">加入房間</h2>
         <p class="panel-subtitle">
-          系統會先查詢房間資訊，確認成功後即可輸入你的名稱並加入。
+          先輸入房間代碼查詢，確認有這場活動後再加入。
         </p>
+
+        <div class="input-row">
+          <div class="field" style="margin-bottom: 0;">
+            <label for="roomCodeInput">房間代碼</label>
+            <input
+              id="roomCodeInput"
+              type="text"
+              placeholder="請輸入房間代碼，例如 ABCD1234"
+              maxlength="20"
+              autocomplete="off"
+            />
+          </div>
+          <button id="searchBtn" class="btn-primary" type="button">查詢房間</button>
+        </div>
 
         <div class="info-box">
           <div class="info-row">
             <div class="label">房間代碼</div>
-            <div class="value room-code" id="roomCodeText">讀取中...</div>
+            <div class="value room-code" id="roomCodeText">尚未查詢</div>
           </div>
           <div class="info-row">
             <div class="label">測驗名稱</div>
-            <div class="value" id="quizTitleText">讀取中...</div>
+            <div class="value" id="quizTitleText">尚未查詢</div>
           </div>
           <div class="info-row">
             <div class="label">建立時間</div>
-            <div class="value" id="startedAtText">讀取中...</div>
+            <div class="value" id="startedAtText">尚未查詢</div>
           </div>
         </div>
 
         <div id="statusBox" class="status loading">
-          正在查詢房間資料...
+          請先輸入房間代碼並查詢。
         </div>
 
         <div id="joinForm" class="hidden">
@@ -516,7 +482,7 @@
           </div>
 
           <div class="actions">
-            <button id="joinBtn" class="btn-primary" type="button">加入房間</button>
+            <button id="joinBtn" class="btn-primary btn-block" type="button">加入房間</button>
             <button id="backBtn" class="btn-secondary" type="button">返回</button>
           </div>
 
