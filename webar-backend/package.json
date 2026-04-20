@@ -1,14 +1,16 @@
 {
-  "name": "ar-vision-link-backend",
+  "name": "ar-vision-link-api",
   "version": "1.0.0",
-  "description": "Backend for AR Vision Link",
+  "description": "Render backend for AR Vision Link + Supabase",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
   }
 }
